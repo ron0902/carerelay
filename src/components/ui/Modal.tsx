@@ -17,26 +17,30 @@ export default function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {/* Modal */}
+      <div className="flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
 
-        <div className="flex items-center justify-between border-b p-5">
-          <h2 className="text-xl font-semibold">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+          <h2 className="text-xl font-semibold text-gray-900">
             {title}
           </h2>
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded p-1 hover:bg-gray-100"
+            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close modal"
           >
-            <XMarkIcon className="w-6 h-6" />
+            <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        {/* Scrollable Content */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
           {children}
         </div>
-
       </div>
     </div>
   );

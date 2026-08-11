@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Bell, LogOut } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const menus = [
   { name: "Dashboard", path: "/user/dashboard" },
@@ -12,6 +13,14 @@ const menus = [
 ];
 
 export default function UserSidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <aside className="min-h-screen w-64 bg-blue-700 text-white">
       <div className="p-6">
@@ -55,6 +64,17 @@ export default function UserSidebar() {
           );
         })}
       </nav>
+
+      <div className="border-t border-blue-600 p-4">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl bg-blue-600 px-4 py-3 text-white transition hover:bg-blue-500"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }

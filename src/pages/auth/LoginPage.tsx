@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   HeartPulse,
   LockKeyhole,
@@ -7,6 +7,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { AuthService } from "../../services/auth.service";
+import { useAuth } from "../../context/AuthContext";
 import {
   Alert,
   Button,
@@ -26,6 +28,8 @@ export default function LoginPage() {
   });
 
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     const newErrors = {
@@ -33,14 +37,12 @@ export default function LoginPage() {
       password: "",
     };
 
-    setMessage("");
-
     if (!email.trim()) {
-      newErrors.email = "Email is required.";
+      newErrors.email = "Email is required";
     }
 
     if (!password.trim()) {
-      newErrors.password = "Password is required.";
+      newErrors.password = "Password is required";
     }
 
     setErrors(newErrors);
@@ -49,14 +51,49 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    setTimeout(() => {
+      const data = await AuthService.login({
+        email,
+        password,
+      });
+
+      if (!data.success) {
+        setMessage(data.message);
+        return;
+      }
+
+      setMessage("Login Successful!");
+
+      login(data.user);
+
+      switch (data.user.role) {
+        case "Admin":
+          navigate("/dashboard");
+          break;
+
+        case "Caregiver":
+          navigate("/user/dashboard");
+          break;
+
+        case "Patient":
+          navigate("/patient/dashboard");
+          break;
+
+        case "Organization":
+          navigate("/organization/dashboard");
+          break;
+
+        default:
+          navigate("/");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Unable to connect to the server.");
+    } finally {
       setLoading(false);
-      setMessage(
-        "Login successful! Backend authentication will be connected later."
-      );
-    }, 1500);
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const menus = [
   {
@@ -56,6 +57,14 @@ const menus = [
 ];
 
 export default function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <aside className="flex w-72 flex-col bg-blue-700 text-white shadow-xl">
 
@@ -118,7 +127,11 @@ export default function Sidebar() {
 
         </div>
 
-        <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 transition hover:bg-blue-500">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 transition hover:bg-blue-500"
+        >
           <LogOut size={18} />
 
           Logout

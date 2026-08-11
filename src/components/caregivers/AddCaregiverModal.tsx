@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Modal } from "../../components/ui";
 import { type Caregiver } from "../../types/caregiver";
+import {
+  createCaregiver,
+  updateCaregiver,
+} from "../../services/caregiverService";
 
 interface AddCaregiverModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (caregiver: Caregiver) => void;
+  onSave: (caregiver: Caregiver) => void | Promise<void>;
   caregiver?: Caregiver | null;
 }
 
@@ -17,18 +21,15 @@ export default function AddCaregiverModal({
 }: AddCaregiverModalProps) {
   const [form, setForm] = useState({
     name: "",
-    age: "",
-    gender: "",
-
     phone: "",
     email: "",
-    address: "",
 
-    specialty: "",
+    licenseNumber: "",
     experience: "",
-    organization: "",
-
     availability: "Available",
+    hourlyRate: "",
+    bio: "",
+
     status: "Active",
   });
 
@@ -41,36 +42,30 @@ export default function AddCaregiverModal({
   useEffect(() => {
     if (caregiver) {
       setForm({
-        name: caregiver.name,
-        age: caregiver.age?.toString() ?? "",
-        gender: caregiver.gender ?? "",
-
+        name: caregiver.name ?? "",
         phone: caregiver.phone ?? "",
         email: caregiver.email ?? "",
-        address: caregiver.address ?? "",
 
-        specialty: caregiver.specialty ?? "",
+        licenseNumber: caregiver.licenseNumber ?? "",
         experience: caregiver.experience?.toString() ?? "",
-        organization: caregiver.organization ?? "",
-
         availability: caregiver.availability ?? "Available",
+        hourlyRate: caregiver.hourlyRate?.toString() ?? "",
+        bio: caregiver.bio ?? "",
+
         status: caregiver.status ?? "Active",
       });
     } else {
       setForm({
         name: "",
-        age: "",
-        gender: "",
-
         phone: "",
         email: "",
-        address: "",
 
-        specialty: "",
+        licenseNumber: "",
         experience: "",
-        organization: "",
-
         availability: "Available",
+        hourlyRate: "",
+        bio: "",
+
         status: "Active",
       });
     }
@@ -82,7 +77,7 @@ export default function AddCaregiverModal({
     });
   }, [caregiver, open]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors = {
       name: "",
       email: "",
@@ -110,54 +105,97 @@ export default function AddCaregiverModal({
 
     if (hasError) return;
 
-    const newCaregiver: Caregiver = {
-      id: caregiver?.id ?? Date.now(),
-      name: form.name,
-      age: Number(form.age),
-      gender: form.gender as "Male" | "Female",
+    // Split full name
+    const nameParts = form.name.trim().split(/\s+/);
 
-      phone: form.phone,
-      email: form.email,
-      address: form.address,
+    const first_name = nameParts.shift() || "";
+    const last_name = nameParts.join(" ");
 
-      specialty: form.specialty,
-      experience: Number(form.experience),
-      organization: form.organization,
+    const payload = {
+      id: caregiver?.id,
 
-      availability: form.availability as
-        | "Available"
-        | "Busy"
-        | "Off Duty",
+      first_name,
+      last_name,
 
-      status: form.status as "Active" | "Inactive",
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+
+      status: form.status,
+
+      license_number: form.licenseNumber.trim(),
+
+      // specialization intentionally omitted
+      experience_years: Number(form.experience) || 0,
+
+      availability: form.availability,
+
+      hourly_rate: Number(form.hourlyRate) || 0,
+
+      bio: form.bio.trim(),
     };
 
-    onSave(newCaregiver);
+    try {
+      let response;
 
-    setForm({
-      name: "",
-      age: "",
-      gender: "",
+      if (caregiver) {
+        response = await updateCaregiver(payload);
+      } else {
+        response = await createCaregiver(payload);
+      }
 
-      phone: "",
-      email: "",
-      address: "",
+      console.log("CAREGIVER RESPONSE:", response);
 
-      specialty: "",
-      experience: "",
-      organization: "",
+      if (!response.success) {
+        alert(
+          response.message ||
+            "Failed to save caregiver."
+        );
+        return;
+      }
 
-      availability: "Available",
-      status: "Active",
-    });
+      const savedCaregiver: Caregiver = {
+        id: caregiver?.id ?? Date.now(),
 
-    setErrors({
-      name: "",
-      email: "",
-      phone: "",
-    });
+        name: form.name.trim(),
 
-    onClose();
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+
+        licenseNumber: form.licenseNumber.trim(),
+
+        experience:
+          Number(form.experience) || 0,
+
+        availability:
+          form.availability as
+            | "Available"
+            | "Busy"
+            | "Off Duty",
+
+        hourlyRate:
+          Number(form.hourlyRate) || 0,
+
+        bio: form.bio.trim(),
+
+        status:
+          form.status as
+            | "Active"
+            | "Inactive",
+      };
+
+      await onSave(savedCaregiver);
+
+      onClose();
+    } catch (error) {
+      console.error(
+        "Failed to save caregiver:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
+    }
   };
 
   return (
@@ -170,69 +208,48 @@ export default function AddCaregiverModal({
           : "Register New Caregiver"
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
+
+        {/* Account Information */}
         <div className="space-y-4">
           <h3 className="border-b pb-2 text-lg font-semibold text-gray-800">
-            Personal Information
+            Account Information
           </h3>
 
           <Input
             label="Full Name"
-            placeholder="Enter caregiver's name"
+            placeholder="Enter caregiver's full name"
             value={form.name}
             onChange={(e) =>
-              setForm({ ...form, name: e.target.value })
+              setForm({
+                ...form,
+                name: e.target.value,
+              })
             }
           />
+
           {errors.name && (
-            <p className="text-sm text-red-500">{errors.name}</p>
+            <p className="text-sm text-red-500">
+              {errors.name}
+            </p>
           )}
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              label="Age"
-              type="number"
-              value={form.age}
-              onChange={(e) =>
-                setForm({ ...form, age: e.target.value })
-              }
-            />
-
-            <div>
-              <label className="mb-2 block font-medium">
-                Gender
-              </label>
-
-              <select
-                className="w-full rounded-lg border p-3"
-                value={form.gender}
-                onChange={(e) =>
-                  setForm({ ...form, gender: e.target.value })
-                }
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="border-b pb-2 pt-4 text-lg font-semibold text-gray-800">
-            Contact Information
-          </h3>
 
           <Input
             label="Phone"
             placeholder="Enter phone number"
             value={form.phone}
             onChange={(e) =>
-              setForm({ ...form, phone: e.target.value })
+              setForm({
+                ...form,
+                phone: e.target.value,
+              })
             }
           />
+
           {errors.phone && (
-            <p className="text-sm text-red-500">{errors.phone}</p>
+            <p className="text-sm text-red-500">
+              {errors.phone}
+            </p>
           )}
 
           <Input
@@ -241,52 +258,63 @@ export default function AddCaregiverModal({
             placeholder="Enter email address"
             value={form.email}
             onChange={(e) =>
-              setForm({ ...form, email: e.target.value })
+              setForm({
+                ...form,
+                email: e.target.value,
+              })
             }
           />
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email}</p>
-          )}
 
-          <Input
-            label="Address"
-            placeholder="Enter address"
-            value={form.address}
-            onChange={(e) =>
-              setForm({ ...form, address: e.target.value })
-            }
-          />
+          {errors.email && (
+            <p className="text-sm text-red-500">
+              {errors.email}
+            </p>
+          )}
         </div>
 
+        {/* Professional Information */}
         <div className="space-y-4">
-          <h3 className="border-b pb-2 pt-4 text-lg font-semibold text-gray-800">
+          <h3 className="border-b pb-2 text-lg font-semibold text-gray-800">
             Professional Information
           </h3>
 
           <Input
-            label="Specialty"
-            placeholder="Ex. Elder Care"
-            value={form.specialty}
+            label="License Number"
+            placeholder="Enter license number"
+            value={form.licenseNumber}
             onChange={(e) =>
-              setForm({ ...form, specialty: e.target.value })
+              setForm({
+                ...form,
+                licenseNumber: e.target.value,
+              })
             }
           />
 
           <Input
             label="Years of Experience"
             type="number"
+            min="0"
+            placeholder="0"
             value={form.experience}
             onChange={(e) =>
-              setForm({ ...form, experience: e.target.value })
+              setForm({
+                ...form,
+                experience: e.target.value,
+              })
             }
           />
 
           <Input
-            label="Organization"
-            placeholder="CareRelay Healthcare"
-            value={form.organization}
+            label="Hourly Rate"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={form.hourlyRate}
             onChange={(e) =>
-              setForm({ ...form, organization: e.target.value })
+              setForm({
+                ...form,
+                hourlyRate: e.target.value,
+              })
             }
           />
 
@@ -305,13 +333,41 @@ export default function AddCaregiverModal({
                 })
               }
             >
-              <option value="Available">Available</option>
-              <option value="Busy">Busy</option>
-              <option value="Off Duty">Off Duty</option>
+              <option value="Available">
+                Available
+              </option>
+
+              <option value="Busy">
+                Busy
+              </option>
+
+              <option value="Off Duty">
+                Off Duty
+              </option>
             </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block font-medium">
+              Bio
+            </label>
+
+            <textarea
+              className="w-full rounded-lg border p-3"
+              rows={3}
+              placeholder="Enter caregiver bio"
+              value={form.bio}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  bio: e.target.value,
+                })
+              }
+            />
           </div>
         </div>
 
+        {/* Status */}
         <div>
           <label className="mb-2 block font-medium">
             Status
@@ -321,23 +377,38 @@ export default function AddCaregiverModal({
             className="w-full rounded-lg border p-3"
             value={form.status}
             onChange={(e) =>
-              setForm({ ...form, status: e.target.value })
+              setForm({
+                ...form,
+                status: e.target.value,
+              })
             }
           >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">
+              Active
+            </option>
+
+            <option value="Inactive">
+              Inactive
+            </option>
           </select>
         </div>
 
+        {/* Buttons */}
         <div className="flex justify-end gap-3 border-t pt-6">
-          <Button variant="secondary" onClick={onClose}>
+          <Button
+            variant="secondary"
+            onClick={onClose}
+          >
             Cancel
           </Button>
 
           <Button onClick={handleSave}>
-            {caregiver ? "Update Caregiver" : "Register Caregiver"}
+            {caregiver
+              ? "Update Caregiver"
+              : "Register Caregiver"}
           </Button>
         </div>
+
       </div>
     </Modal>
   );

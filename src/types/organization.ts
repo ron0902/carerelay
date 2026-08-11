@@ -7,7 +7,6 @@ export interface Organization {
   contactPerson: string;
   phone: string;
   email: string;
-
   address: string;
 
   status: "Active" | "Inactive";
