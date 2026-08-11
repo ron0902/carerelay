@@ -1,48 +1,99 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, EmptyState } from "../../components/ui";
 import { type Caregiver } from "../../types/caregiver";
+import { getCaregivers } from "../../services/caregiverService";
+
 import CaregiverTable from "../../components/caregivers/CaregiverTable";
 import AddCaregiverModal from "../../components/caregivers/AddCaregiverModal";
 import DeleteCaregiverModal from "../../components/caregivers/DeleteCaregiverModal";
-import ViewCaregiverModal from "../../components/caregivers/ViewCaregiverModal";
+import ViewCaregiverModal from"../../components/caregivers/ViewCaregiverModal";
 import CaregiverToolbar from "../../components/caregivers/CaregiverToolbar";
 
 export default function CaregiversPage() {
-  const [caregivers, setCaregivers] = useState<Caregiver[]>([
-    {
-      id: 1,
-      name: "John Reyes",
-      age: 31,
-      gender: "Male",
-      phone: "09123456789",
-      email: "john@example.com",
-      address: "General Santos City",
-      specialty: "Elder Care",
-      experience: 6,
-      organization: "CareRelay",
-      availability: "Available",
-      status: "Active",
-    },{
-    id: 2,
-    name: "Maria Cruz",
-    age: 29,
-    gender: "Female",
-    phone: "09987654321",
-    email: "maria@example.com",
-    address: "Koronadal City",
-    specialty: "Home Nursing",
-    experience: 4,
-    organization: "CareRelay Healthcare",
-    availability: "Busy",
-    status: "Active",
-  }
-  ]);
+  const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+
   const [successMessage, setSuccessMessage] = useState("");
+
+  const [viewCaregiver, setViewCaregiver] =
+    useState<Caregiver | null>(null);
+
+  const [caregiverToDelete, setCaregiverToDelete] =
+    useState<Caregiver | null>(null);
+
+  const [openModal, setOpenModal] = useState(false);
+
+  const [selectedCaregiver, setSelectedCaregiver] =
+    useState<Caregiver | null>(null);
+
   const caregiversPerPage = 5;
+
+  /*
+   * Load caregivers from database
+   */
+  useEffect(() => {
+    loadCaregivers();
+  }, []);
+
+  const loadCaregivers = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getCaregivers();
+
+      if (!response.success) {
+        console.error(response.message);
+        return;
+      }
+
+      const formattedCaregivers: Caregiver[] =
+        response.caregivers.map((caregiver: any) => ({
+          id: Number(caregiver.id),
+
+          userId: Number(caregiver.user_id),
+
+          name: `${caregiver.first_name ?? ""} ${caregiver.last_name ?? ""}`.trim(),
+
+          email: caregiver.email ?? "",
+
+          phone: caregiver.phone ?? "",
+
+          status:
+            caregiver.status === "Inactive"
+              ? "Inactive"
+              : "Active",
+
+          licenseNumber:
+            caregiver.license_number ?? "",
+
+          experience:
+            Number(caregiver.experience_years) || 0,
+
+          availability:
+            caregiver.availability ?? "Available",
+
+          hourlyRate:
+            Number(caregiver.hourly_rate) || 0,
+
+          bio:
+            caregiver.bio ?? "",
+        }));
+
+      setCaregivers(formattedCaregivers);
+
+    } catch (error) {
+      console.error(
+        "Failed to load caregivers:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -56,81 +107,110 @@ export default function CaregiversPage() {
     }, 3000);
   };
 
-  const filteredCaregivers = caregivers.filter((caregiver) => {
-    const matchesSearch =
-      caregiver.name.toLowerCase().includes(search.toLowerCase()) ||
-      caregiver.email.toLowerCase().includes(search.toLowerCase());
+  const filteredCaregivers = caregivers.filter(
+    (caregiver) => {
+      const matchesSearch =
+        caregiver.name
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        caregiver.email
+          .toLowerCase()
+          .includes(search.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "All" ||
-      caregiver.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "All" ||
+        caregiver.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    }
+  );
 
   const totalPages = Math.ceil(
-    filteredCaregivers.length / caregiversPerPage
+    filteredCaregivers.length /
+      caregiversPerPage
   );
 
-  const startIndex = (currentPage - 1) * caregiversPerPage;
+  const startIndex =
+    (currentPage - 1) * caregiversPerPage;
 
-  const paginatedCaregivers = filteredCaregivers.slice(
-    startIndex,
-    startIndex + caregiversPerPage
-  );
+  const paginatedCaregivers =
+    filteredCaregivers.slice(
+      startIndex,
+      startIndex + caregiversPerPage
+    );
 
-  const [viewCaregiver, setViewCaregiver] =
-  useState<Caregiver | null>(null);
-
-  const [caregiverToDelete, setCaregiverToDelete] =
-    useState<Caregiver | null>(null);
-
+  /*
+   * Delete for now is still UI-only.
+   * We will connect it to delete.php later.
+   */
   const confirmDeleteCaregiver = () => {
     if (!caregiverToDelete) return;
 
     setCaregivers((prev) =>
       prev.filter(
-        (caregiver) => caregiver.id !== caregiverToDelete.id
+        (caregiver) =>
+          caregiver.id !== caregiverToDelete.id
       )
     );
 
     setCaregiverToDelete(null);
-    showSuccess("Caregiver deleted successfully.");
+
+    showSuccess(
+      "Caregiver deleted successfully."
+    );
   };
 
-  const [openModal, setOpenModal] = useState(false);
-  const [selectedCaregiver, setSelectedCaregiver] =
-    useState<Caregiver | null>(null);
+  /*
+   * Save caregiver
+   *
+   * This will be connected to create.php/update.php
+   * when we update AddCaregiverModal.
+   */
+  const handleSaveCaregiver = async (
+    caregiver: Caregiver
+  ) => {
+    const isEditing = selectedCaregiver !== null;
 
-  const handleSaveCaregiver = (caregiver: Caregiver) => {
-    if (selectedCaregiver) {
-      setCaregivers((prev) =>
-        prev.map((item) =>
-          item.id === selectedCaregiver.id
-            ? { ...caregiver, id: selectedCaregiver.id }
-            : item
-        )
-      );
-
-      showSuccess("Caregiver updated successfully.");
-    } else {
-      setCaregivers((prev) => [...prev, caregiver]);
-
-      showSuccess("Caregiver added successfully.");
-    }
-
-    setSelectedCaregiver(null);
     setOpenModal(false);
+    setSelectedCaregiver(null);
+
+    await loadCaregivers();
+
+    showSuccess(
+      isEditing
+        ? "Caregiver updated successfully."
+        : "Caregiver added successfully."
+    );
   };
 
-  const handleEditCaregiver = (caregiver: Caregiver) => {
+  const handleEditCaregiver = (
+    caregiver: Caregiver
+  ) => {
     setSelectedCaregiver(caregiver);
     setOpenModal(true);
   };
 
+  /*
+   * Loading state
+   */
+  if (loading) {
+    return (
+      <div>
+        <h1 className="mb-2 text-3xl font-bold">
+          Caregivers
+        </h1>
+
+        <p className="text-gray-500">
+          Loading caregivers...
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div>
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">
             Caregivers
@@ -142,15 +222,16 @@ export default function CaregiversPage() {
         </div>
 
         <Button
-            onClick={() => {
-                setSelectedCaregiver(null);
-                setOpenModal(true);
-            }}
-            >
-            + Add Caregiver
-            </Button>
+          onClick={() => {
+            setSelectedCaregiver(null);
+            setOpenModal(true);
+          }}
+        >
+          + Add Caregiver
+        </Button>
       </div>
 
+      {/* Toolbar */}
       <CaregiverToolbar
         search={search}
         onSearchChange={setSearch}
@@ -158,12 +239,14 @@ export default function CaregiversPage() {
         onStatusChange={setStatusFilter}
       />
 
+      {/* Success message */}
       {successMessage && (
         <Alert variant="success">
           {successMessage}
         </Alert>
       )}
 
+      {/* Table */}
       <Card>
         {filteredCaregivers.length === 0 ? (
           <EmptyState
@@ -179,27 +262,37 @@ export default function CaregiversPage() {
               onDelete={setCaregiverToDelete}
             />
 
+            {/* Pagination */}
             <div className="mt-6 flex items-center justify-between">
               <Button
                 variant="secondary"
                 disabled={currentPage === 1}
                 onClick={() =>
-                  setCurrentPage((page) => Math.max(page - 1, 1))
+                  setCurrentPage((page) =>
+                    Math.max(page - 1, 1)
+                  )
                 }
               >
                 Previous
               </Button>
 
               <span className="text-sm text-gray-600">
-                Page {currentPage} of {Math.max(totalPages, 1)}
+                Page {currentPage} of{" "}
+                {Math.max(totalPages, 1)}
               </span>
 
               <Button
                 variant="secondary"
-                disabled={currentPage === totalPages}
+                disabled={
+                  currentPage === totalPages ||
+                  totalPages === 0
+                }
                 onClick={() =>
                   setCurrentPage((page) =>
-                    Math.min(page + 1, totalPages)
+                    Math.min(
+                      page + 1,
+                      totalPages
+                    )
                   )
                 }
               >
@@ -210,26 +303,35 @@ export default function CaregiversPage() {
         )}
       </Card>
 
+      {/* Add / Edit */}
       <AddCaregiverModal
-            open={openModal}
-            caregiver={selectedCaregiver}
-            onClose={() => {
-                setOpenModal(false);
-                setSelectedCaregiver(null);
-            }}
-            onSave={handleSaveCaregiver}
-            />
-            <DeleteCaregiverModal
-                open={caregiverToDelete !== null}
-                caregiver={caregiverToDelete}
-                onClose={() => setCaregiverToDelete(null)}
-                onConfirm={confirmDeleteCaregiver}
-                />
-                <ViewCaregiverModal
-                open={viewCaregiver !== null}
-                caregiver={viewCaregiver}
-                onClose={() => setViewCaregiver(null)}
-                />
+        open={openModal}
+        caregiver={selectedCaregiver}
+        onClose={() => {
+          setOpenModal(false);
+          setSelectedCaregiver(null);
+        }}
+        onSave={handleSaveCaregiver}
+      />
+
+      {/* Delete */}
+      <DeleteCaregiverModal
+        open={caregiverToDelete !== null}
+        caregiver={caregiverToDelete}
+        onClose={() =>
+          setCaregiverToDelete(null)
+        }
+        onConfirm={confirmDeleteCaregiver}
+      />
+
+      {/* View */}
+      <ViewCaregiverModal
+        open={viewCaregiver !== null}
+        caregiver={viewCaregiver}
+        onClose={() =>
+          setViewCaregiver(null)
+        }
+      />
     </div>
   );
 }

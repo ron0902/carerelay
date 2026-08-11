@@ -4,10 +4,13 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  success: boolean;
+  message: string;
+  token?: string;
   user: {
     id: string;
-    name: string;
+    first_name: string;
+    last_name: string;
     email: string;
     role: string;
   };

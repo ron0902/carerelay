@@ -7,7 +7,8 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
   {
@@ -43,6 +44,14 @@ const menuItems = [
 ];
 
 export default function PatientSidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <aside className="flex w-full flex-col bg-slate-800 text-white lg:min-h-screen lg:w-64">
       {/* Brand */}
@@ -94,6 +103,8 @@ export default function PatientSidebar() {
       {/* Logout */}
       <div className="border-t border-slate-700 p-4">
         <button
+          type="button"
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-slate-300 transition hover:bg-red-500 hover:text-white"
         >
           <LogOut size={20} />

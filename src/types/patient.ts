@@ -1,32 +1,26 @@
 export interface Patient {
   id: number;
+  userId: number;
 
-  // Basic Information
-  name: string;
-  age: number;
+  dateOfBirth: string;
   gender: "Male" | "Female";
+  bloodType: string;
+  address: string;
+
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+
+  medicalCondition: string;
+
+  // Joined from users table
+  name: string;
+  email: string;
+  phone: string;
   status: "Active" | "Inactive";
 
-  // Contact Information
-  phone?: string;
-  email?: string;
-  address?: string;
+  // Derived locally (optional)
+  age?: number;
 
-  // Medical Information
-  bloodType?: string;
-  medicalCondition?: string;
-  allergies?: string;
-
-  // Care Information
-  caregiver?: string;
-  organization?: string;
-
-  // Emergency Contact
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  emergencyRelationship?: string;
-
-  // System Information
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

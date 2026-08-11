@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Button, Input, Modal } from "../../components/ui";
 import { type Organization } from "../../types/organization";
 
+import {
+  createOrganization,
+  updateOrganization,
+} from "../../services/organizationService";
+
 interface AddOrganizationModalProps {
   open: boolean;
   onClose: () => void;
@@ -34,13 +39,13 @@ export default function AddOrganizationModal({
   useEffect(() => {
     if (organization) {
       setForm({
-        name: organization.name,
-        type: organization.type,
-        contactPerson: organization.contactPerson,
-        phone: organization.phone,
-        email: organization.email,
-        address: organization.address,
-        status: organization.status,
+        name: organization.name ?? "",
+        type: organization.type ?? "",
+        contactPerson: organization.contactPerson ?? "",
+        phone: organization.phone ?? "",
+        email: organization.email ?? "",
+        address: organization.address ?? "",
+        status: organization.status ?? "Active",
       });
     } else {
       setForm({
@@ -61,7 +66,7 @@ export default function AddOrganizationModal({
     });
   }, [organization, open]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors = {
       name: "",
       type: "",
@@ -89,19 +94,118 @@ export default function AddOrganizationModal({
 
     if (hasError) return;
 
-    const newOrganization: Organization = {
-      id: organization?.id ?? Date.now(),
-      name: form.name,
-      type: form.type,
-      contactPerson: form.contactPerson,
-      phone: form.phone,
-      email: form.email,
-      address: form.address,
-      status: form.status as "Active" | "Inactive",
+    // =========================
+    // DATABASE PAYLOAD
+    // =========================
+
+    const payload = {
+      id: organization?.id,
+
+      organization_name: form.name.trim(),
+      contact_person: form.contactPerson.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      address: form.address.trim(),
+
+      // These are in your database
+      city: "",
+      province: "",
+      postal_code: "",
+
+      description: form.type.trim(),
+      website: "",
+
+      status: form.status,
     };
 
-    onSave(newOrganization);
-    onClose();
+    try {
+      let response;
+
+      // =========================
+      // UPDATE
+      // =========================
+
+      if (organization) {
+        response = await updateOrganization(payload);
+      }
+
+      // =========================
+      // CREATE
+      // =========================
+
+      else {
+        response = await createOrganization(payload);
+      }
+
+      console.log("ORGANIZATION RESPONSE:", response);
+
+      if (!response.success) {
+        alert(
+          response.message ||
+            (organization
+              ? "Failed to update organization."
+              : "Failed to create organization.")
+        );
+
+        return;
+      }
+
+      // =========================
+      // FRONTEND OBJECT
+      // =========================
+
+      const savedOrganization: Organization = {
+        id: organization?.id ?? response.organization?.id ?? Date.now(),
+
+        name: form.name.trim(),
+
+        type: form.type.trim(),
+
+        contactPerson: form.contactPerson.trim(),
+
+        phone: form.phone.trim(),
+
+        email: form.email.trim(),
+
+        address: form.address.trim(),
+
+        status: form.status as "Active" | "Inactive",
+      };
+
+      onSave(savedOrganization);
+
+      // Reset form
+      setForm({
+        name: "",
+        type: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        address: "",
+        status: "Active",
+      });
+
+      setErrors({
+        name: "",
+        type: "",
+        contactPerson: "",
+      });
+
+      onClose();
+    } catch (error: any) {
+      console.error("========== ORGANIZATION ERROR ==========");
+
+      console.error("Full error:", error);
+      console.error("Status:", error?.response?.status);
+      console.error("Response:", error?.response?.data);
+      console.error("URL:", error?.config?.url);
+      console.error("Method:", error?.config?.method);
+
+      alert(
+        error?.response?.data?.message ||
+          `Server error: ${error?.response?.status || "No response"}`
+      );
+    }
   };
 
   return (
@@ -126,9 +230,13 @@ export default function AddOrganizationModal({
 
             <Input
               label="Organization Name"
+              placeholder="Enter organization name"
               value={form.name}
               onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
+                setForm({
+                  ...form,
+                  name: e.target.value,
+                })
               }
             />
 
@@ -143,7 +251,10 @@ export default function AddOrganizationModal({
               placeholder="Hospital, Clinic..."
               value={form.type}
               onChange={(e) =>
-                setForm({ ...form, type: e.target.value })
+                setForm({
+                  ...form,
+                  type: e.target.value,
+                })
               }
             />
 
@@ -166,6 +277,7 @@ export default function AddOrganizationModal({
 
             <Input
               label="Contact Person"
+              placeholder="Enter contact person"
               value={form.contactPerson}
               onChange={(e) =>
                 setForm({
@@ -183,6 +295,7 @@ export default function AddOrganizationModal({
 
             <Input
               label="Phone Number"
+              placeholder="09XXXXXXXXX"
               value={form.phone}
               onChange={(e) =>
                 setForm({
@@ -195,6 +308,7 @@ export default function AddOrganizationModal({
             <Input
               label="Email Address"
               type="email"
+              placeholder="example@email.com"
               value={form.email}
               onChange={(e) =>
                 setForm({
@@ -215,6 +329,7 @@ export default function AddOrganizationModal({
 
           <Input
             label="Complete Address"
+            placeholder="Enter complete address"
             value={form.address}
             onChange={(e) =>
               setForm({
@@ -241,11 +356,17 @@ export default function AddOrganizationModal({
               })
             }
           >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">
+              Active
+            </option>
+
+            <option value="Inactive">
+              Inactive
+            </option>
           </select>
         </div>
 
+        {/* Buttons */}
         <div className="flex justify-end gap-3 border-t pt-6">
 
           <Button

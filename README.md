@@ -2,41 +2,59 @@
 
 ## Overview
 
-CareRelay is a web-based caregiver management system developed using React, TypeScript, and Tailwind CSS. The application provides role-based access for managing patients, caregivers, organizations, appointments, care assignments, and reports.
+CareRelay is a full-stack caregiver management system built with a React + TypeScript + Vite + Tailwind CSS frontend and a PHP + MySQL backend. The project supports role-based dashboards for administrators, caregivers, and patients.
 
 ---
 
 ## Technology Stack
 
 ### Frontend
-- ReactJS
+- React
 - TypeScript
 - Vite
 - Tailwind CSS
 - React Router
 - Axios
 
-### Planned Backend
-- Node.js
-- Express.js
+### Backend
+- PHP
 - MySQL
-- JWT Authentication
+- PDO for database access
+- Simple REST-style API endpoints
 
 ---
 
 ## Project Structure
 
 ```
-src/
-├── api/
-├── components/
-├── hooks/
-├── layouts/
-├── pages/
-├── routes/
-├── services/
-├── types/
-├── utils/
+carerelay-client/
+├── backend/
+│   ├── api/
+│   │   ├── auth/
+│   │   ├── patients/
+│   │   ├── caregivers/
+│   │   ├── organizations/
+│   │   ├── appointments/
+│   │   ├── assignments/
+│   │   ├── reports/
+│   │   ├── care_plans/
+│   │   ├── notifications/
+│   │   └── users/
+│   ├── config/
+│   │   └── database.php
+│   └── index.php
+├── DATABASE/
+│   └── carerelay_db.sql
+├── DOCS/
+│   ├── API_Documentation.md
+│   │   └── Technical Design.docx
+├── src/
+├── public/
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+├── README.md
+└── .gitignore
 ```
 
 ---
