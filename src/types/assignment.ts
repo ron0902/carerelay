@@ -1,14 +1,21 @@
 export interface CareAssignment {
   id: number;
 
+  patientId: number;
+  caregiverId: number;
+  organizationId: number;
+  assignedBy: number;
+
   patientName: string;
   caregiverName: string;
   organizationName: string;
+  assignedByName: string;
 
+  assignedDate: string;
   startDate: string;
   endDate: string;
 
-  priority: "Low" | "Medium" | "High";
+  shift: string;
 
   status:
     | "Pending"
@@ -16,5 +23,8 @@ export interface CareAssignment {
     | "Completed"
     | "Cancelled";
 
-  notes: string;
+  remarks: string;
+
+  createdAt: string;
+  updatedAt: string;
 }

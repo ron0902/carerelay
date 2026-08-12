@@ -30,21 +30,21 @@ try {
             a.created_at,
             a.updated_at,
 
-            -- Patient information
+            -- Patient
             CONCAT(
                 patient_user.first_name,
                 ' ',
                 patient_user.last_name
             ) AS patient_name,
 
-            -- Caregiver information
+            -- Caregiver
             CONCAT(
                 caregiver_user.first_name,
                 ' ',
                 caregiver_user.last_name
             ) AS caregiver_name,
 
-            -- Organization information
+            -- Organization
             o.organization_name
 
         FROM assignments a
@@ -57,10 +57,13 @@ try {
             ON p.user_id = patient_user.id
 
         -- Caregiver
-        INNER JOIN users caregiver_user
-            ON a.caregiver_id = caregiver_user.id
+        INNER JOIN caregivers c
+            ON a.caregiver_id = c.id
 
-        -- Organization is optional
+        INNER JOIN users caregiver_user
+            ON c.user_id = caregiver_user.id
+
+        -- Organization
         LEFT JOIN organizations o
             ON a.organization_id = o.id
 

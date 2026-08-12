@@ -5,16 +5,15 @@ require_once __DIR__ . "/../../config/database.php";
 
 header("Content-Type: application/json");
 
-$database = new Database();
-$conn = $database->connect();
-
 try {
+
+    $database = new Database();
+    $conn = $database->connect();
 
     $sql = "
         SELECT
             o.id,
             o.user_id,
-
             o.organization_name,
             o.contact_person,
             o.phone,
@@ -26,17 +25,9 @@ try {
             o.description,
             o.website,
             o.status,
-
             o.created_at,
             o.updated_at
-
         FROM organizations o
-
-        INNER JOIN users u
-            ON o.user_id = u.id
-
-        WHERE u.role = 'Organization'
-
         ORDER BY o.id DESC
     ";
 
@@ -56,6 +47,7 @@ try {
 
     echo json_encode([
         "success" => false,
-        "message" => $e->getMessage()
+        "message" => "Database error.",
+        "error" => $e->getMessage()
     ]);
 }

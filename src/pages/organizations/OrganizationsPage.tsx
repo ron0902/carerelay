@@ -57,34 +57,31 @@ export default function OrganizationsPage() {
 
       console.log("ORGANIZATIONS RESPONSE:", response);
 
-      if (!response.success) {
-        console.error(response.message);
-        return;
+      if (response.success) {
+        const mappedOrganizations: Organization[] =
+          response.organizations.map((item: any) => ({
+            id: Number(item.id),
+
+            name: item.organization_name ?? "",
+
+            type: item.description ?? "",
+
+            contactPerson: item.contact_person ?? "",
+
+            phone: item.phone ?? "",
+
+            email: item.email ?? "",
+
+            address: item.address ?? "",
+
+            status:
+              item.status === "Inactive"
+                ? "Inactive"
+                : "Active",
+          }));
+
+        setOrganizations(mappedOrganizations);
       }
-
-      const formattedOrganizations: Organization[] =
-        (response.organizations ?? []).map((organization: any) => ({
-          id: Number(organization.id),
-
-          name: organization.organization_name ?? "",
-
-          type: organization.description ?? "",
-
-          contactPerson: organization.contact_person ?? "",
-
-          phone: organization.phone ?? "",
-
-          email: organization.email ?? "",
-
-          address: organization.address ?? "",
-
-          status:
-            organization.status === "Inactive"
-              ? "Inactive"
-              : "Active",
-        }));
-
-      setOrganizations(formattedOrganizations);
     } catch (error) {
       console.error(
         "Failed to load organizations:",

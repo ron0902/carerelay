@@ -1,48 +1,92 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, EmptyState } from "../../components/ui";
+
 import { type CareAssignment } from "../../types/assignment";
+
 import AssignmentTable from "../../components/assignments/AssignmentTable";
 import AddAssignmentModal from "../../components/assignments/AddAssignmentModal";
 import ViewAssignmentModal from "../../components/assignments/ViewAssignmentModal";
 import DeleteAssignmentModal from "../../components/assignments/DeleteAssignmentModal";
 import AssignmentToolbar from "../../components/assignments/AssignmentToolbar";
+
+import {
+  getAssignments,
+  deleteAssignment,
+  updateAssignment,
+} from "../../services/assignmentService";
+
 export default function AssignmentsPage() {
-  const [assignments, setAssignments] = useState<CareAssignment[]>([
-    {
-      id: 1,
-      patientName: "Maria Santos",
-      caregiverName: "John Reyes",
-      organizationName: "Sunrise Care",
-      startDate: "2026-07-15",
-      endDate: "2026-07-22",
-      priority: "High",
-      status: "Active",
-      notes: "Daily wound care and medication reminders.",
-    },
-    {
-      id: 2,
-      patientName: "Juan Dela Cruz",
-      caregiverName: "Maria Cruz",
-      organizationName: "HealthFirst",
-      startDate: "2026-07-10",
-      endDate: "2026-07-16",
-      priority: "Medium",
-      status: "Completed",
-      notes: "Post-surgery recovery support completed successfully.",
-    },
-  ]);
+  const [assignments, setAssignments] = useState<CareAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [openModal, setOpenModal] = useState(false);
+
   const [selectedAssignment, setSelectedAssignment] =
     useState<CareAssignment | null>(null);
+
   const [viewAssignment, setViewAssignment] =
     useState<CareAssignment | null>(null);
+
   const [assignmentToDelete, setAssignmentToDelete] =
     useState<CareAssignment | null>(null);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
   const [currentPage, setCurrentPage] = useState(1);
+
   const assignmentsPerPage = 5;
+
+  // =========================
+  // LOAD ASSIGNMENTS
+  // =========================
+
+  useEffect(() => {
+    loadAssignments();
+  }, []);
+
+  const loadAssignments = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getAssignments();
+
+      console.log("ASSIGNMENTS RESPONSE:", response);
+
+      if (response.success) {
+        const mappedAssignments: CareAssignment[] =
+          response.assignments.map((item: any) => ({
+            id: Number(item.id),
+
+            patientName: item.patient_name ?? "",
+            caregiverName: item.caregiver_name ?? "",
+            organizationName: item.organization_name ?? "",
+
+            startDate: item.start_date ?? "",
+            endDate: item.end_date ?? "",
+
+            // Temporary mapping because DB has shift, not priority
+            priority: "Medium",
+
+            status: item.status,
+
+            notes: item.remarks ?? "",
+          }));
+
+        setAssignments(mappedAssignments);
+      } else {
+        console.error("Failed to load assignments:", response.message);
+      }
+    } catch (error) {
+      console.error("Error loading assignments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================
+  // EDIT
+  // =========================
 
   const handleEditAssignment = (
     assignment: CareAssignment
@@ -51,118 +95,270 @@ export default function AssignmentsPage() {
     setOpenModal(true);
   };
 
+  // =========================
+  // SAVE
+  // =========================
+
   const handleSaveAssignment = (
     assignment: CareAssignment
   ) => {
-    if (selectedAssignment) {
-      setAssignments((prev) =>
-        prev.map((item) =>
-          item.id === selectedAssignment.id
-            ? {
-                ...assignment,
-                id: selectedAssignment.id,
-              }
-            : item
-        )
+    setAssignments((prev) => {
+      const exists = prev.some(
+        (item) => item.id === assignment.id
       );
-    } else {
-      setAssignments((prev) => [...prev, assignment]);
-    }
+
+      if (exists) {
+        return prev.map((item) =>
+          item.id === assignment.id
+            ? assignment
+            : item
+        );
+      }
+
+      return [assignment, ...prev];
+    });
 
     setSelectedAssignment(null);
     setOpenModal(false);
   };
 
-  const confirmDeleteAssignment = () => {
+  // =========================
+  // DELETE
+  // =========================
+
+  const confirmDeleteAssignment = async () => {
     if (!assignmentToDelete) return;
 
-    setAssignments((prev) =>
-      prev.filter(
-        (assignment) => assignment.id !== assignmentToDelete.id
-      )
-    );
+    try {
+      const response = await deleteAssignment(
+        assignmentToDelete.id
+      );
 
-    setAssignmentToDelete(null);
+      console.log(
+        "DELETE ASSIGNMENT RESPONSE:",
+        response
+      );
+
+      if (!response.success) {
+        alert(
+          response.message ||
+            "Failed to delete assignment."
+        );
+        return;
+      }
+
+      setAssignments((prev) =>
+        prev.filter(
+          (assignment) =>
+            assignment.id !== assignmentToDelete.id
+        )
+      );
+
+      setAssignmentToDelete(null);
+
+      alert("Assignment deleted successfully.");
+    } catch (error) {
+      console.error(
+        "Delete assignment error:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server."
+      );
+    }
   };
 
-  const handleStatusChange = (
+  // =========================
+  // STATUS CHANGE
+  // =========================
+
+  const handleStatusChange = async (
     id: number,
     status: CareAssignment["status"]
   ) => {
-    setAssignments((prev) =>
-      prev.map((assignment) =>
-        assignment.id === id
+    try {
+      const assignment = assignments.find(
+        (item) => item.id === id
+      );
+
+      if (!assignment) return;
+
+      const response = await updateAssignment({
+        id,
+        patient_id: assignment.patientId,
+        caregiver_id: assignment.caregiverId,
+        organization_id: assignment.organizationId,
+        assigned_by: assignment.assignedBy,
+
+        assigned_date: assignment.assignedDate,
+        start_date: assignment.startDate,
+        end_date: assignment.endDate,
+
+        shift: assignment.shift,
+        status,
+        remarks: assignment.remarks,
+      });
+
+      if (!response.success) {
+        alert(
+          response.message ||
+            "Failed to update assignment status."
+        );
+        return;
+      }
+
+      setAssignments((prev) =>
+        prev.map((assignment) =>
+          assignment.id === id
+            ? {
+                ...assignment,
+                status,
+              }
+            : assignment
+        )
+      );
+
+      setViewAssignment((prev) =>
+        prev
           ? {
-              ...assignment,
+              ...prev,
               status,
             }
-          : assignment
-      )
-    );
+          : null
+      );
+    } catch (error) {
+      console.error(
+        "Status update error:",
+        error
+      );
 
-    setViewAssignment((prev) =>
-      prev
-        ? {
-            ...prev,
-            status,
-          }
-        : null
-    );
+      alert(
+        "Unable to connect to the server."
+      );
+    }
   };
 
-  const filteredAssignments = assignments.filter((assignment) => {
-    const searchText = search.toLowerCase();
+  // =========================
+  // SEARCH + FILTER
+  // =========================
 
-    const matchesSearch =
-      assignment.patientName.toLowerCase().includes(searchText) ||
-      assignment.caregiverName.toLowerCase().includes(searchText);
+  const filteredAssignments = assignments.filter(
+    (assignment) => {
+      const searchText = search.toLowerCase();
 
-    const matchesStatus =
-      statusFilter === "All" ||
-      assignment.status === statusFilter;
+      const matchesSearch =
+        assignment.patientName
+          .toLowerCase()
+          .includes(searchText) ||
+        assignment.caregiverName
+          .toLowerCase()
+          .includes(searchText) ||
+        assignment.organizationName
+          .toLowerCase()
+          .includes(searchText);
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus =
+        statusFilter === "All" ||
+        assignment.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    }
+  );
+
+  // =========================
+  // PAGINATION
+  // =========================
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredAssignments.length / assignmentsPerPage)
-  );
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedAssignments = filteredAssignments.slice(
-    (safeCurrentPage - 1) * assignmentsPerPage,
-    safeCurrentPage * assignmentsPerPage
+    Math.ceil(
+      filteredAssignments.length /
+        assignmentsPerPage
+    )
   );
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages
+  );
+
+  const paginatedAssignments =
+    filteredAssignments.slice(
+      (safeCurrentPage - 1) *
+        assignmentsPerPage,
+      safeCurrentPage *
+        assignmentsPerPage
+    );
+
+  // =========================
+  // LOADING
+  // =========================
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">
             Care Assignments
           </h1>
 
           <p className="text-gray-500">
-            Assign caregivers to patients and manage care assignments.
+            Loading assignments...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // PAGE
+  // =========================
+
+  return (
+    <div className="space-y-6">
+
+      {/* HEADER */}
+
+      <div className="flex items-center justify-between">
+
+        <div>
+          <h1 className="text-3xl font-bold">
+            Care Assignments
+          </h1>
+
+          <p className="text-gray-500">
+            Assign caregivers to patients and
+            manage care assignments.
           </p>
         </div>
 
-       <Button
-        onClick={() => {
-          setSelectedAssignment(null);
-          setOpenModal(true);
-        }}
-      >
-        + New Assignment
-      </Button>
+        <Button
+          onClick={() => {
+            setSelectedAssignment(null);
+            setOpenModal(true);
+          }}
+        >
+          + New Assignment
+        </Button>
+
       </div>
 
+      {/* TABLE */}
+
       <Card>
+
         <AssignmentToolbar
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setCurrentPage(1);
+          }}
           status={statusFilter}
-          onStatusChange={setStatusFilter}
+          onStatusChange={(value) => {
+            setStatusFilter(value);
+            setCurrentPage(1);
+          }}
         />
 
         {filteredAssignments.length === 0 ? (
@@ -180,37 +376,50 @@ export default function AssignmentsPage() {
             />
 
             <div className="mt-6 flex items-center justify-between">
+
               <Button
                 variant="secondary"
                 disabled={safeCurrentPage === 1}
                 onClick={() =>
-                  setCurrentPage((page) => Math.max(page - 1, 1))
+                  setCurrentPage((page) =>
+                    Math.max(page - 1, 1)
+                  )
                 }
               >
                 Previous
               </Button>
 
               <span className="text-sm text-gray-600">
-                Page {safeCurrentPage} of {totalPages}
+                Page {safeCurrentPage} of{" "}
+                {totalPages}
               </span>
 
               <Button
                 variant="secondary"
-                disabled={safeCurrentPage === totalPages}
+                disabled={
+                  safeCurrentPage === totalPages
+                }
                 onClick={() =>
                   setCurrentPage((page) =>
-                    Math.min(page + 1, totalPages)
+                    Math.min(
+                      page + 1,
+                      totalPages
+                    )
                   )
                 }
               >
                 Next
               </Button>
+
             </div>
           </>
         )}
+
       </Card>
 
-        <AddAssignmentModal
+      {/* ADD / EDIT */}
+
+      <AddAssignmentModal
         open={openModal}
         assignment={selectedAssignment}
         onClose={() => {
@@ -218,21 +427,30 @@ export default function AssignmentsPage() {
           setSelectedAssignment(null);
         }}
         onSave={handleSaveAssignment}
-        />
+      />
+
+      {/* VIEW */}
 
       <ViewAssignmentModal
         open={viewAssignment !== null}
         assignment={viewAssignment}
-        onClose={() => setViewAssignment(null)}
+        onClose={() =>
+          setViewAssignment(null)
+        }
         onStatusChange={handleStatusChange}
       />
 
-        <DeleteAssignmentModal
-          open={assignmentToDelete !== null}
-          assignment={assignmentToDelete}
-          onClose={() => setAssignmentToDelete(null)}
-          onConfirm={confirmDeleteAssignment}
-        />
+      {/* DELETE */}
+
+      <DeleteAssignmentModal
+        open={assignmentToDelete !== null}
+        assignment={assignmentToDelete}
+        onClose={() =>
+          setAssignmentToDelete(null)
+        }
+        onConfirm={confirmDeleteAssignment}
+      />
+
     </div>
   );
 }
