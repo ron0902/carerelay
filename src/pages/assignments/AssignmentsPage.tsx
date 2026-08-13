@@ -58,17 +58,29 @@ export default function AssignmentsPage() {
           response.assignments.map((item: any) => ({
             id: Number(item.id),
 
+            patientId: Number(item.patient_id ?? 0),
+            caregiverId: Number(item.caregiver_id ?? 0),
+            organizationId: Number(item.organization_id ?? 0),
+            assignedBy: Number(item.assigned_by ?? 0),
+
             patientName: item.patient_name ?? "",
             caregiverName: item.caregiver_name ?? "",
             organizationName: item.organization_name ?? "",
+            assignedByName: "",
 
+            assignedDate: item.assigned_date ?? "",
             startDate: item.start_date ?? "",
             endDate: item.end_date ?? "",
 
+            shift: item.shift ?? "",
+            status: item.status,
+            remarks: item.remarks ?? "",
+
+            createdAt: item.created_at ?? "",
+            updatedAt: item.updated_at ?? "",
+
             // Temporary mapping because DB has shift, not priority
             priority: "Medium",
-
-            status: item.status,
 
             notes: item.remarks ?? "",
           }));

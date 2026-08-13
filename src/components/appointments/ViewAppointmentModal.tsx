@@ -85,7 +85,7 @@ export default function ViewAppointmentModal({
             </p>
 
             <p className="font-semibold">
-              {appointment.service}
+              {appointment.service || appointment.appointmentType || "-"}
             </p>
           </div>
 

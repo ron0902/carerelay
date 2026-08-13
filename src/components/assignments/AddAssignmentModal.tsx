@@ -94,7 +94,10 @@ export default function AddAssignmentModal({
         ),
 
         assignedDate:
-          assignment.assignedDate ?? "",
+          assignment.assignedDate ||
+          new Date()
+            .toISOString()
+            .split("T")[0],
 
         startDate:
           assignment.startDate ?? "",
@@ -317,6 +320,9 @@ export default function AddAssignmentModal({
     };
 
     try {
+      console.log("EDIT ASSIGNMENT FORM:", form);
+      console.log("ASSIGNED DATE:", form.assignedDate);
+
       let response;
 
       if (assignment) {
@@ -482,15 +488,10 @@ export default function AddAssignmentModal({
               });
             }}
           >
-            <option value="">
-              Select Patient
-            </option>
+            <option value="">Select Patient</option>
 
             {patients.map((patient) => (
-              <option
-                key={patient.id}
-                value={patient.id}
-              >
+              <option key={patient.id} value={patient.id}>
                 {patient.name}
               </option>
             ))}
@@ -526,15 +527,10 @@ export default function AddAssignmentModal({
               });
             }}
           >
-            <option value="">
-              Select Caregiver
-            </option>
+            <option value="">Select Caregiver</option>
 
             {caregivers.map((caregiver) => (
-              <option
-                key={caregiver.id}
-                value={caregiver.id}
-              >
+              <option key={caregiver.id} value={caregiver.id}>
                 {caregiver.name}
               </option>
             ))}
@@ -543,13 +539,6 @@ export default function AddAssignmentModal({
           {errors.caregiverId && (
             <p className="mt-1 text-sm text-red-500">
               {errors.caregiverId}
-            </p>
-          )}
-
-          {caregivers.length === 0 && (
-            <p className="mt-1 text-sm text-gray-500">
-              Caregiver list will appear once the
-              caregiver API is connected.
             </p>
           )}
         </div>
@@ -568,8 +557,7 @@ export default function AddAssignmentModal({
             onChange={(e) => {
               setForm({
                 ...form,
-                organizationId:
-                  e.target.value,
+                organizationId: e.target.value,
               });
 
               setErrors({
@@ -578,20 +566,13 @@ export default function AddAssignmentModal({
               });
             }}
           >
-            <option value="">
-              Select Organization
-            </option>
+            <option value="">Select Organization</option>
 
-            {organizations.map(
-              (organization) => (
-                <option
-                  key={organization.id}
-                  value={organization.id}
-                >
-                  {organization.name}
-                </option>
-              )
-            )}
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
           </select>
 
           {errors.organizationId && (

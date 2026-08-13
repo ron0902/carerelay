@@ -75,7 +75,7 @@ export default function AppointmentTable({
               </td>
 
               <td className="p-4">
-                {appointment.service}
+                {appointment.service || appointment.appointmentType || "-"}
               </td>
 
               <td className="p-4">

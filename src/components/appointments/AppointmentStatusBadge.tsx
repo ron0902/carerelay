@@ -2,7 +2,8 @@ interface Props {
   status:
     | "Scheduled"
     | "Completed"
-    | "Cancelled";
+    | "Cancelled"
+    | "No Show";
 }
 
 export default function AppointmentStatusBadge({
@@ -17,6 +18,9 @@ export default function AppointmentStatusBadge({
 
     Cancelled:
       "bg-red-100 text-red-700",
+
+    "No Show":
+      "bg-orange-100 text-orange-700",
   };
 
   return (

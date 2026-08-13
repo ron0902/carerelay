@@ -7,7 +7,6 @@ import {
 } from "../../components/ui";
 
 import { type Appointment } from "../../types/appointment";
-import { type Patient } from "../../types/patient";
 
 import AppointmentToolbar from "../../components/appointments/AppointmentToolbar";
 import AppointmentTable from "../../components/appointments/AppointmentTable";
@@ -15,29 +14,16 @@ import AddAppointmentModal from "../../components/appointments/AddAppointmentMod
 import ViewAppointmentModal from "../../components/appointments/ViewAppointmentModal";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
 
+import {
+  getAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+} from "../../services/appointmentService";
+
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    {
-      id: 1,
-      patientName: "Maria Santos",
-      caregiverName: "John Reyes",
-      appointmentDate: "2026-07-30",
-      appointmentTime: "09:00",
-      service: "Home Care",
-      status: "Scheduled",
-      notes: "Routine checkup",
-    },
-    {
-      id: 2,
-      patientName: "Juan Dela Cruz",
-      caregiverName: "Maria Cruz",
-      appointmentDate: "2026-08-01",
-      appointmentTime: "13:30",
-      service: "Physical Therapy",
-      status: "Completed",
-      notes: "Session completed",
-    },
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -50,38 +36,6 @@ export default function AppointmentsPage() {
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
 
-  const patients: Patient[] = [
-    {
-      id: 1,
-      name: "Maria Santos",
-      age: 78,
-      gender: "Female",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Juan Dela Cruz",
-      age: 65,
-      gender: "Male",
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Pedro Ramos",
-      age: 82,
-      gender: "Male",
-      status: "Active",
-    },
-  ];
-
-  const patientOptions = patients.map((patient) => patient.name);
-
-  const caregiverOptions = [
-    "John Reyes",
-    "Maria Cruz",
-    "James Lopez",
-  ];
-
   const [viewAppointment, setViewAppointment] =
     useState<Appointment | null>(null);
 
@@ -89,8 +43,99 @@ export default function AppointmentsPage() {
     useState<Appointment | null>(null);
 
   useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter]);
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getAppointments();
+
+      console.log("APPOINTMENTS API:", response);
+
+      if (response.success) {
+        const mappedAppointments: Appointment[] = (
+          response.appointments || []
+        ).map((appointment: any) => ({
+          id: Number(appointment.id),
+
+          patientId:
+            Number(appointment.patient_id),
+
+          caregiverId:
+            Number(appointment.caregiver_id),
+
+          organizationId:
+            appointment.organization_id !== null &&
+            appointment.organization_id !== undefined &&
+            appointment.organization_id !== ""
+              ? Number(appointment.organization_id)
+              : null,
+
+          patientName:
+            appointment.patient_name ?? "",
+
+          caregiverName:
+            appointment.caregiver_name ?? "",
+
+          organizationName:
+            appointment.organization_name ?? "",
+
+          appointmentDate:
+            appointment.appointment_date ?? "",
+
+          appointmentTime:
+            appointment.appointment_time ?? "",
+
+          duration:
+            Number(appointment.duration ?? 60),
+
+          appointmentType:
+            appointment.appointment_type ?? "",
+
+          reason:
+            appointment.reason ?? "",
+
+          location:
+            appointment.location ?? "",
+
+          service:
+            appointment.appointment_type ?? "",
+
+          status:
+            appointment.status ?? "Scheduled",
+
+          notes:
+            appointment.notes ?? "",
+
+          createdAt:
+            appointment.created_at ?? "",
+
+          updatedAt:
+            appointment.updated_at ?? "",
+        }));
+
+        setAppointments(mappedAppointments);
+      } else {
+        console.error(
+          "Failed to load appointments:",
+          response.message
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load appointments:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -100,56 +145,204 @@ export default function AppointmentsPage() {
     }, 3000);
   };
 
-  const handleSaveAppointment = (
+  const handleSaveAppointment = async (
     appointment: Appointment
   ) => {
-    if (selectedAppointment) {
+    try {
+      let response;
+
+      // =====================================
+      // UPDATE
+      // =====================================
+
+      if (selectedAppointment) {
+        const payload = {
+          id: selectedAppointment.id,
+
+          patient_id: appointment.patientId,
+
+          caregiver_id: appointment.caregiverId,
+
+          organization_id:
+            appointment.organizationId,
+
+          appointment_date:
+            appointment.appointmentDate,
+
+          appointment_time:
+            appointment.appointmentTime,
+
+          duration:
+            appointment.duration,
+
+          appointment_type:
+            appointment.appointmentType,
+
+          reason:
+            appointment.reason,
+
+          location:
+            appointment.location,
+
+          status:
+            appointment.status,
+
+          notes:
+            appointment.notes,
+        };
+
+        response =
+          await updateAppointment(payload);
+
+        console.log(
+          "UPDATE APPOINTMENT RESPONSE:",
+          response
+        );
+
+        if (!response.success) {
+          alert(
+            response.message ||
+              "Failed to update appointment."
+          );
+          return;
+        }
+
+        showSuccess(
+          "Appointment updated successfully."
+        );
+      } else {
+        // =====================================
+        // CREATE
+        // =====================================
+
+        const payload = {
+          patient_id:
+            appointment.patientId,
+
+          caregiver_id:
+            appointment.caregiverId,
+
+          organization_id:
+            appointment.organizationId,
+
+          appointment_date:
+            appointment.appointmentDate,
+
+          appointment_time:
+            appointment.appointmentTime,
+
+          duration:
+            appointment.duration,
+
+          appointment_type:
+            appointment.appointmentType,
+
+          reason:
+            appointment.reason,
+
+          location:
+            appointment.location,
+
+          status:
+            appointment.status,
+
+          notes:
+            appointment.notes,
+        };
+
+        response =
+          await createAppointment(payload);
+
+        console.log(
+          "CREATE APPOINTMENT RESPONSE:",
+          response
+        );
+
+        if (!response.success) {
+          alert(
+            response.message ||
+              "Failed to create appointment."
+          );
+          return;
+        }
+
+        showSuccess(
+          "Appointment added successfully."
+        );
+      }
+
+      // =====================================
+      // RELOAD FROM DATABASE
+      // =====================================
+
+      await loadAppointments();
+
+      setSelectedAppointment(null);
+      setOpenModal(false);
+    } catch (error) {
+      console.error(
+        "Appointment save error:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
+    }
+  };
+
+  const confirmDeleteAppointment = async () => {
+    if (!appointmentToDelete) return;
+
+    try {
+      const response = await deleteAppointment(
+        appointmentToDelete.id
+      );
+
+      console.log(
+        "DELETE APPOINTMENT RESPONSE:",
+        response
+      );
+
+      if (!response.success) {
+        alert(
+          response.message ||
+            "Failed to delete appointment."
+        );
+        return;
+      }
+
       setAppointments((prev) =>
-        prev.map((item) =>
-          item.id === selectedAppointment.id
-            ? {
-                ...appointment,
-                id: selectedAppointment.id,
-              }
-            : item
+        prev.filter(
+          (item) =>
+            item.id !== appointmentToDelete.id
         )
       );
 
-      showSuccess("Appointment updated successfully.");
-    } else {
-      setAppointments((prev) => [
-        ...prev,
-        appointment,
-      ]);
+      setAppointmentToDelete(null);
 
-      showSuccess("Appointment added successfully.");
+      showSuccess(
+        "Appointment deleted successfully."
+      );
+    } catch (error) {
+      console.error(
+        "Delete appointment error:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server."
+      );
     }
-
-    setSelectedAppointment(null);
-    setOpenModal(false);
-  };
-
-  const confirmDeleteAppointment = () => {
-    if (!appointmentToDelete) return;
-
-    setAppointments((prev) =>
-      prev.filter(
-        (item) => item.id !== appointmentToDelete.id
-      )
-    );
-
-    setAppointmentToDelete(null);
-
-    showSuccess("Appointment deleted successfully.");
   };
 
   const filteredAppointments = appointments.filter(
     (appointment) => {
       const matchesSearch =
-        appointment.patientName
+        (appointment.patientName ?? "")
           .toLowerCase()
           .includes(search.toLowerCase()) ||
-        appointment.caregiverName
+        (appointment.caregiverName ?? "")
           .toLowerCase()
           .includes(search.toLowerCase());
 
@@ -282,8 +475,6 @@ export default function AppointmentsPage() {
           setSelectedAppointment(null);
         }}
         onSave={handleSaveAppointment}
-        patients={patientOptions}
-        caregivers={caregiverOptions}
       />
 
       <ViewAppointmentModal
