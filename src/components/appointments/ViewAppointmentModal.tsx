@@ -91,12 +91,37 @@ export default function ViewAppointmentModal({
 
           <div>
             <p className="mb-1 text-sm text-gray-500">
-              Status
+              Organization
             </p>
 
-            <AppointmentStatusBadge
-              status={appointment.status}
-            />
+            <p className="font-semibold">
+              {appointment.organizationName || "Not specified"}
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm text-gray-500">
+              Duration
+            </p>
+
+            <p className="font-semibold">
+              {appointment.duration} minutes
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm text-gray-500">Organization</p>
+            <p className="font-semibold">{appointment.organizationName || "Not specified"}</p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm text-gray-500">Duration</p>
+            <p className="font-semibold">{appointment.duration} minutes</p>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm text-gray-500">Status</p>
+            <AppointmentStatusBadge status={appointment.status} />
           </div>
 
         </div>
@@ -104,12 +129,38 @@ export default function ViewAppointmentModal({
         <div>
           <p className="mb-2 flex items-center gap-2 text-sm text-gray-500">
             <FileText size={16} />
+            Reason
+          </p>
+          <div className="rounded-lg bg-gray-50 p-4">
+            {appointment.reason || "No reason provided."}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm text-gray-500">
+            Location
+          </p>
+          <div className="rounded-lg bg-gray-50 p-4">
+            {appointment.location || "No location provided."}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-sm text-gray-500">Reason</p>
+          <div className="rounded-lg bg-gray-50 p-4">{appointment.reason || "No reason provided."}</div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm text-gray-500">Location</p>
+          <div className="rounded-lg bg-gray-50 p-4">{appointment.location || "No location provided."}</div>
+        </div>
+
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-sm text-gray-500">
+            <FileText size={16} />
             Notes
           </p>
-
-          <div className="rounded-lg bg-gray-50 p-4">
-            {appointment.notes || "No notes available."}
-          </div>
+          <div className="rounded-lg bg-gray-50 p-4">{appointment.notes || "No notes available."}</div>
         </div>
 
         <div className="flex justify-end border-t pt-5">

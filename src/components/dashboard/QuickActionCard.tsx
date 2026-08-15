@@ -5,6 +5,7 @@ interface QuickActionCardProps {
   subtitle: string;
   icon: ReactNode;
   variant?: "primary" | "secondary";
+  onClick?: () => void;
 }
 
 export default function QuickActionCard({
@@ -12,6 +13,7 @@ export default function QuickActionCard({
   subtitle,
   icon,
   variant = "primary",
+  onClick,
 }: QuickActionCardProps) {
   const baseClasses =
     variant === "secondary"
@@ -19,7 +21,11 @@ export default function QuickActionCard({
       : "rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-700";
 
   return (
-    <button className={`flex items-start gap-3 text-left ${baseClasses}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-start gap-3 text-left ${baseClasses}`}
+    >
       <div className="rounded-full bg-white/20 p-2">{icon}</div>
       <div>
         <p className="font-semibold">{title}</p>

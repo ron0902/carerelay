@@ -5,6 +5,7 @@ import ReportTable from "../../components/reports/ReportTable";
 import ReportCard from "../../components/reports/ReportCard";
 import { type Report } from "../../types/report";
 import ExportButtons from "../../components/reports/ExportButtons";
+import ViewReportModal from "../../components/reports/ViewReportModal";
 import { exportPDF } from "../../utils/exportPDF";
 import { exportExcel } from "../../utils/exportExcel";
 import {
@@ -18,6 +19,7 @@ import {
 export default function ReportsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [viewReport, setViewReport] = useState<Report | null>(null);
 
  const reports: Report[] = [
   {
@@ -159,9 +161,18 @@ export default function ReportsPage() {
           onCategoryChange={setCategory}
         />
 
-        <ReportTable reports={filteredReports} />
+        <ReportTable
+          reports={filteredReports}
+          onView={setViewReport}
+        />
 
       </Card>
+
+      <ViewReportModal
+        open={viewReport !== null}
+        report={viewReport}
+        onClose={() => setViewReport(null)}
+      />
     </div>
   );
 }

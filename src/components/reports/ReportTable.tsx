@@ -6,9 +6,10 @@ import { Eye, FileText, FileSpreadsheet } from "lucide-react";
 
 interface ReportTableProps {
   reports: Report[];
+  onView: (report: Report) => void;
 }
 
-export default function ReportTable({ reports }: ReportTableProps) {
+export default function ReportTable({ reports, onView }: ReportTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const reportsPerPage = 5;
 
@@ -61,7 +62,12 @@ export default function ReportTable({ reports }: ReportTableProps) {
                 <td className="p-4">
                   <div className="flex gap-2">
 
-                    <button className="rounded bg-gray-500 p-2 text-white hover:bg-gray-600">
+                    <button
+                      type="button"
+                      onClick={() => onView(report)}
+                      title="View report"
+                      className="rounded bg-gray-500 p-2 text-white hover:bg-gray-600"
+                    >
                       <Eye size={16} />
                     </button>
 
