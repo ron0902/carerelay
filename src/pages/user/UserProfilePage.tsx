@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
 import {
   Briefcase,
-  HeartHandshake,
   Lock,
   Mail,
-  MapPin,
   Phone,
   ShieldCheck,
   User,
@@ -13,35 +11,74 @@ import {
 import EditProfileModal, {
   type UserProfile,
 } from "../../components/user/EditProfileModal";
+import { useAuth } from "../../context/AuthContext";
+import { getCaregiverProfile } from "../../services/caregiverService";
 
 export default function UserProfilePage() {
-  const [user, setUser] = useState<UserProfile>({
-    name: "John Reyes",
-    email: "john@example.com",
-    phone: "09123456789",
-    age: 32,
-    gender: "Male",
+  const { user } = useAuth();
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: "",
+    email: "",
+    phone: "",
+    age: 0,
+    gender: "Not specified",
     status: "Active",
   });
-
+  const [loading, setLoading] = useState(true);
   const [openEditModal, setOpenEditModal] = useState(false);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    loadProfile();
+  }, [user?.id]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const response = await getCaregiverProfile(user.id);
+
+      if (!response.success) {
+        console.error(response.message);
+        return;
+      }
+
+      const profile = response.profile ?? {};
+      const fullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
+
+      setUserProfile({
+        name: fullName || "Caregiver",
+        email: profile.email ?? "",
+        phone: profile.phone ?? "",
+        age: Number(profile.experience_years ?? 0),
+        gender: profile.availability ?? "Not specified",
+        status: profile.status ?? "Active",
+      });
+    } catch (error) {
+      console.error("Failed to load caregiver profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveProfile = (updatedUser: UserProfile) => {
-    setUser(updatedUser);
+    setUserProfile(updatedUser);
   };
 
   const infoRows = [
-    { label: "Full Name", value: user.name, icon: <User size={18} /> },
-    { label: "Email", value: user.email, icon: <Mail size={18} /> },
-    { label: "Phone", value: user.phone, icon: <Phone size={18} /> },
-    { label: "Address", value: "General Santos City", icon: <MapPin size={18} /> },
+    { label: "Full Name", value: userProfile.name || "Not available", icon: <User size={18} /> },
+    { label: "Email", value: userProfile.email || "Not available", icon: <Mail size={18} /> },
+    { label: "Phone", value: userProfile.phone || "Not available", icon: <Phone size={18} /> },
+    { label: "Account Status", value: userProfile.status || "Active", icon: <ShieldCheck size={18} /> },
   ];
 
   const professionalRows = [
-    { label: "Role", value: "Senior Caregiver", icon: <Briefcase size={18} /> },
-    { label: "Specialization", value: "Elderly Care, Mobility Support", icon: <ShieldCheck size={18} /> },
-    { label: "Experience", value: "8 Years", icon: <HeartHandshake size={18} /> },
-    { label: "Account Status", value: user.status, icon: <ShieldCheck size={18} /> },
+    { label: "Role", value: "Caregiver", icon: <Briefcase size={18} /> },
+    { label: "Specialization", value: userProfile.gender || "Not set", icon: <ShieldCheck size={18} /> },
+    { label: "Experience", value: userProfile.age ? `${userProfile.age} Years` : "Not set", icon: <Briefcase size={18} /> },
+    { label: "Availability", value: userProfile.gender || "Not set", icon: <ShieldCheck size={18} /> },
   ];
 
   return (
@@ -55,114 +92,91 @@ export default function UserProfilePage() {
         <Button onClick={() => setOpenEditModal(true)}>Edit Profile</Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-xl border p-5 transition hover:shadow-md">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-              <User size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">Personal Information</h2>
-              <p className="text-sm text-gray-500">Core contact details and address.</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {infoRows.map((item) => (
-              <div key={item.label} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
-                <div className="mt-0.5 rounded-full bg-slate-100 p-2 text-slate-600">
-                  {item.icon}
+      {loading ? (
+        <Card>
+          <p className="text-gray-500">Loading profile...</p>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="rounded-xl border p-5 transition hover:shadow-md">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="rounded-full bg-blue-100 p-3 text-blue-600">
+                  <User size={20} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{item.label}</p>
-                  <p className="font-semibold text-slate-700">{item.value}</p>
+                  <h2 className="text-xl font-semibold">Personal Information</h2>
+                  <p className="text-sm text-gray-500">Core account details.</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
 
-        <Card className="rounded-xl border p-5 transition hover:shadow-md">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-full bg-green-100 p-3 text-green-600">
-              <Briefcase size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">Professional Information</h2>
-              <p className="text-sm text-gray-500">Role, experience, and status.</p>
-            </div>
-          </div>
+              <div className="space-y-4">
+                {infoRows.map((item) => (
+                  <div key={item.label} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+                    <div className="mt-0.5 rounded-full bg-slate-100 p-2 text-slate-600">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">{item.label}</p>
+                      <p className="font-semibold text-slate-700">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
 
-          <div className="space-y-4">
-            {professionalRows.map((item) => (
-              <div key={item.label} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
-                <div className="mt-0.5 rounded-full bg-slate-100 p-2 text-slate-600">
-                  {item.icon}
+            <Card className="rounded-xl border p-5 transition hover:shadow-md">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="rounded-full bg-green-100 p-3 text-green-600">
+                  <Briefcase size={20} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{item.label}</p>
-                  <p className="font-semibold text-slate-700">{item.value}</p>
+                  <h2 className="text-xl font-semibold">Professional Information</h2>
+                  <p className="text-sm text-gray-500">Role, experience, and status.</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
 
-      <Card className="rounded-xl border p-5 transition hover:shadow-md">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="rounded-full bg-red-100 p-3 text-red-600">
-            <HeartHandshake size={20} />
+              <div className="space-y-4">
+                {professionalRows.map((item) => (
+                  <div key={item.label} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+                    <div className="mt-0.5 rounded-full bg-slate-100 p-2 text-slate-600">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">{item.label}</p>
+                      <p className="font-semibold text-slate-700">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold">Emergency Contact</h2>
-            <p className="text-sm text-gray-500">Next-of-kin details for urgent support.</p>
-          </div>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-sm text-gray-500">Contact Name</p>
-            <p className="font-semibold text-slate-700">Maria Reyes</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-sm text-gray-500">Relationship</p>
-            <p className="font-semibold text-slate-700">Spouse</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-sm text-gray-500">Phone</p>
-            <p className="font-semibold text-slate-700">0912-345-6789</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-sm text-gray-500">Address</p>
-            <p className="font-semibold text-slate-700">General Santos City</p>
-          </div>
-        </div>
-      </Card>
+          <Card className="rounded-xl border p-5 transition hover:shadow-md">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="rounded-full bg-purple-100 p-3 text-purple-600">
+                <Lock size={20} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Account Settings</h2>
+                <p className="text-sm text-gray-500">Security and account access options.</p>
+              </div>
+            </div>
 
-      <Card className="rounded-xl border p-5 transition hover:shadow-md">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="rounded-full bg-purple-100 p-3 text-purple-600">
-            <Lock size={20} />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">Account Settings</h2>
-            <p className="text-sm text-gray-500">Security and account access options.</p>
-          </div>
-        </div>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary">Change Password</Button>
+              <Button variant="secondary">Logout</Button>
+            </div>
+          </Card>
 
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary">Change Password</Button>
-          <Button variant="secondary">Logout</Button>
-        </div>
-      </Card>
-
-      <EditProfileModal
-        open={openEditModal}
-        user={user}
-        onClose={() => setOpenEditModal(false)}
-        onSave={handleSaveProfile}
-      />
+          <EditProfileModal
+            open={openEditModal}
+            user={userProfile}
+            onClose={() => setOpenEditModal(false)}
+            onSave={handleSaveProfile}
+          />
+        </>
+      )}
     </div>
   );
 }

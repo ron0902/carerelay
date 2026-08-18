@@ -18,11 +18,11 @@ export default function DeleteCaregiverModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Delete Caregiver"
+      title="Deactivate Caregiver"
     >
       <div className="space-y-6">
         <p className="text-gray-600">
-          Are you sure you want to delete{" "}
+          Are you sure you want to deactivate{" "}
           <span className="font-semibold">
             {caregiver?.name}
           </span>
@@ -35,7 +35,7 @@ export default function DeleteCaregiverModal({
           </Button>
 
           <Button onClick={onConfirm}>
-            Delete Caregiver
+            Deactivate
           </Button>
         </div>
       </div>

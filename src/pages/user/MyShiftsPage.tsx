@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
 import {
   CalendarDays,
@@ -12,6 +12,8 @@ import VisitDetailsModal, {
 } from "../../components/user/VisitDetailsModal";
 import VisitChecklist from "../../components/user/VisitChecklist";
 import VisitNotesModal from "../../components/user/VisitNotesModal";
+import { useAuth } from "../../context/AuthContext";
+import { getMyShifts } from "../../services/caregiverService";
 
 export interface Shift {
   id: number;
@@ -24,35 +26,9 @@ export interface Shift {
 }
 
 export default function MyShiftsPage() {
-  const [shifts, setShifts] = useState<Shift[]>([
-    {
-      id: 1,
-      patient: "Maria Santos",
-      service: "Home Care Visit",
-      date: "July 28, 2026",
-      time: "8:00 AM - 12:00 PM",
-      location: "General Santos City",
-      status: "Active",
-    },
-    {
-      id: 2,
-      patient: "Juan Dela Cruz",
-      service: "Medication Assistance",
-      date: "July 29, 2026",
-      time: "1:00 PM - 5:00 PM",
-      location: "Koronadal City",
-      status: "Upcoming",
-    },
-    {
-      id: 3,
-      patient: "Ana Ramos",
-      service: "Companionship Care",
-      date: "July 30, 2026",
-      time: "8:00 AM - 4:00 PM",
-      location: "Polomolok",
-      status: "Completed",
-    },
-  ]);
+  const { user } = useAuth();
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | Shift["status"]>(
@@ -63,6 +39,70 @@ export default function MyShiftsPage() {
   const [visitModalOpen, setVisitModalOpen] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [visitNotesOpen, setVisitNotesOpen] = useState(false);
+
+  const loadMyShifts = async () => {
+    if (!user?.id) return;
+    try {
+      setLoading(true);
+      const response = await getMyShifts(user.id);
+      console.log(
+        "MY SHIFTS API:",
+        response
+      );
+      if (!response.success) {
+        console.error(
+          response.message
+        );
+        return;
+      }
+      const formattedShifts: Shift[] = (
+        response.shifts || []
+      ).map((assignment: any) => {
+        let status: Shift["status"];
+        if (assignment.status === "Active") {
+          status = "Active";
+        } else if (
+          assignment.status === "Completed"
+        ) {
+          status = "Completed";
+        } else if (
+          assignment.status === "Cancelled"
+        ) {
+          status = "Cancelled";
+        } else {
+          status = "Upcoming";
+        }
+        return {
+          id: Number(assignment.id),
+          patient:
+            assignment.patient_name ?? "",
+          service:
+            "Care Assignment",
+          date:
+            assignment.start_date ?? "",
+          time:
+            assignment.shift ?? "",
+          location:
+            assignment.organization_name ??
+            "Location not specified",
+          status,
+        };
+      });
+      setShifts(formattedShifts);
+    } catch (error) {
+      console.error(
+        "My shifts error:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadMyShifts();
+  }, [user?.id]);
 
   const badgeColor = (status: Shift["status"]) => {
     switch (status) {
@@ -169,15 +209,25 @@ export default function MyShiftsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="hidden lg:grid lg:grid-cols-[1.6fr,1fr,1fr,0.8fr] lg:gap-4 lg:border-b lg:px-4 lg:py-3 lg:text-sm lg:font-semibold lg:text-slate-600">
-          <div>Patient</div>
-          <div>Date</div>
-          <div>Time</div>
-          <div>Status</div>
-        </div>
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">
+            Loading your shifts...
+          </div>
+        ) : filteredShifts.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No assigned shifts found.
+          </div>
+        ) : (
+          <>
+            <div className="hidden lg:grid lg:grid-cols-[1.6fr,1fr,1fr,0.8fr] lg:gap-4 lg:border-b lg:px-4 lg:py-3 lg:text-sm lg:font-semibold lg:text-slate-600">
+              <div>Patient</div>
+              <div>Date</div>
+              <div>Time</div>
+              <div>Status</div>
+            </div>
 
-        <div className="space-y-3 p-2 lg:p-0">
-          {filteredShifts.map((shift) => (
+            <div className="space-y-3 p-2 lg:p-0">
+              {filteredShifts.map((shift) => (
             <div
               key={shift.id}
               className="rounded-xl border border-slate-200 p-4 transition hover:shadow-md"
@@ -246,7 +296,9 @@ export default function MyShiftsPage() {
               </div>
             </div>
           ))}
-        </div>
+            </div>
+          </>
+        )}
       </Card>
 
       <VisitDetailsModal

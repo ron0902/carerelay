@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
 import { CalendarDays, CheckCircle, Clock } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  getCaregiverAvailability,
+  saveCaregiverAvailability,
+} from "../../services/caregiverService";
 
 export interface Availability {
   day: string;
@@ -9,51 +14,81 @@ export interface Availability {
   endTime: string;
 }
 
+const defaultAvailability: Availability[] = [
+  { day: "Monday", enabled: false, startTime: "", endTime: "" },
+  { day: "Tuesday", enabled: false, startTime: "", endTime: "" },
+  { day: "Wednesday", enabled: false, startTime: "", endTime: "" },
+  { day: "Thursday", enabled: false, startTime: "", endTime: "" },
+  { day: "Friday", enabled: false, startTime: "", endTime: "" },
+  { day: "Saturday", enabled: false, startTime: "", endTime: "" },
+  { day: "Sunday", enabled: false, startTime: "", endTime: "" },
+];
+
+const toMinutes = (time: string) => {
+  if (!time) return 0;
+
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const getWeeklyHours = (items: Availability[]) => {
+  return items.reduce((total, item) => {
+    if (!item.enabled || !item.startTime || !item.endTime) {
+      return total;
+    }
+
+    const startMinutes = toMinutes(item.startTime);
+    const endMinutes = toMinutes(item.endTime);
+    const diff = endMinutes - startMinutes;
+
+    return total + (diff > 0 ? diff / 60 : 0);
+  }, 0);
+};
+
 export default function AvailabilityPage() {
-  const [availability, setAvailability] = useState<Availability[]>([
-    {
-      day: "Monday",
-      enabled: true,
-      startTime: "08:00",
-      endTime: "17:00",
-    },
-    {
-      day: "Tuesday",
-      enabled: true,
-      startTime: "08:00",
-      endTime: "17:00",
-    },
-    {
-      day: "Wednesday",
-      enabled: true,
-      startTime: "08:00",
-      endTime: "17:00",
-    },
-    {
-      day: "Thursday",
-      enabled: false,
-      startTime: "",
-      endTime: "",
-    },
-    {
-      day: "Friday",
-      enabled: true,
-      startTime: "08:00",
-      endTime: "17:00",
-    },
-    {
-      day: "Saturday",
-      enabled: false,
-      startTime: "",
-      endTime: "",
-    },
-    {
-      day: "Sunday",
-      enabled: false,
-      startTime: "",
-      endTime: "",
-    },
-  ]);
+  const { user } = useAuth();
+  const [availability, setAvailability] = useState<Availability[]>(defaultAvailability);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    loadAvailability();
+  }, [user?.id]);
+
+  const loadAvailability = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const response = await getCaregiverAvailability(user.id);
+
+      if (response.success) {
+        const savedAvailability = Array.isArray(response.availability)
+          ? response.availability.map((item: any) => ({
+              day: item.day_of_week ?? "",
+              enabled: Boolean(item.enabled),
+              startTime: item.start_time ?? "",
+              endTime: item.end_time ?? "",
+            }))
+          : [];
+
+        const merged = defaultAvailability.map((defaultItem) => {
+          const match = savedAvailability.find((savedItem: Availability) => savedItem.day === defaultItem.day);
+          return match
+            ? { ...defaultItem, ...match }
+            : defaultItem;
+        });
+
+        setAvailability(merged);
+      }
+    } catch (error) {
+      console.error("Failed to load availability:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateAvailability = (
     index: number,
@@ -65,10 +100,26 @@ export default function AvailabilityPage() {
     );
   };
 
-  const weeklyHours = availability.filter((item) => item.enabled).length * 8;
+  const weeklyHours = getWeeklyHours(availability);
 
-  const handleSave = () => {
-    console.log("Availability saved:", availability);
+  const handleSave = async () => {
+    if (!user?.id) return;
+
+    try {
+      setSaving(true);
+      const response = await saveCaregiverAvailability(user.id, availability);
+
+      if (!response.success) {
+        console.error(response.message);
+        return;
+      }
+
+      console.log("Availability saved:", availability);
+    } catch (error) {
+      console.error("Failed to save availability:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -119,58 +170,62 @@ export default function AvailabilityPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {availability.map((item, index) => (
-              <div
-                key={item.day}
-                className="rounded-xl border p-4 transition hover:shadow-md"
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={item.enabled}
-                      onChange={(e) =>
-                        updateAvailability(index, "enabled", e.target.checked)
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="font-semibold text-slate-700">{item.day}</span>
-                  </label>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                      <span className="text-sm text-slate-500">Start</span>
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading availability...</p>
+          ) : (
+            <div className="space-y-3">
+              {availability.map((item, index) => (
+                <div
+                  key={item.day}
+                  className="rounded-xl border p-4 transition hover:shadow-md"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <label className="flex items-center gap-3">
                       <input
-                        type="time"
-                        value={item.startTime}
-                        disabled={!item.enabled}
+                        type="checkbox"
+                        checked={item.enabled}
                         onChange={(e) =>
-                          updateAvailability(index, "startTime", e.target.value)
+                          updateAvailability(index, "enabled", e.target.checked)
                         }
-                        className="bg-transparent text-sm outline-none disabled:text-slate-400"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
+                      <span className="font-semibold text-slate-700">{item.day}</span>
                     </label>
 
-                    <span className="text-sm text-slate-400">to</span>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <span className="text-sm text-slate-500">Start</span>
+                        <input
+                          type="time"
+                          value={item.startTime}
+                          disabled={!item.enabled}
+                          onChange={(e) =>
+                            updateAvailability(index, "startTime", e.target.value)
+                          }
+                          className="bg-transparent text-sm outline-none disabled:text-slate-400"
+                        />
+                      </label>
 
-                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                      <span className="text-sm text-slate-500">End</span>
-                      <input
-                        type="time"
-                        value={item.endTime}
-                        disabled={!item.enabled}
-                        onChange={(e) =>
-                          updateAvailability(index, "endTime", e.target.value)
-                        }
-                        className="bg-transparent text-sm outline-none disabled:text-slate-400"
-                      />
-                    </label>
+                      <span className="text-sm text-slate-400">to</span>
+
+                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <span className="text-sm text-slate-500">End</span>
+                        <input
+                          type="time"
+                          value={item.endTime}
+                          disabled={!item.enabled}
+                          onChange={(e) =>
+                            updateAvailability(index, "endTime", e.target.value)
+                          }
+                          className="bg-transparent text-sm outline-none disabled:text-slate-400"
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card>
@@ -182,7 +237,9 @@ export default function AvailabilityPage() {
 
             <div className="rounded-xl bg-blue-50 p-4">
               <p className="text-sm font-medium text-blue-700">Total Hours</p>
-              <p className="mt-2 text-4xl font-bold text-blue-800">{weeklyHours} Hours</p>
+              <p className="mt-2 text-4xl font-bold text-blue-800">
+                {weeklyHours.toFixed(1)} Hours
+              </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 p-4">
@@ -190,8 +247,8 @@ export default function AvailabilityPage() {
               <p className="mt-2 text-lg font-semibold text-slate-700">Morning</p>
             </div>
 
-            <Button className="w-full" onClick={handleSave}>
-              Save Availability
+            <Button className="w-full" onClick={handleSave} disabled={saving || loading}>
+              {saving ? "Saving..." : "Save Availability"}
             </Button>
           </div>
         </Card>

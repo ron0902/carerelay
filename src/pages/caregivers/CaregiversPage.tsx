@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, EmptyState } from "../../components/ui";
 import { type Caregiver } from "../../types/caregiver";
-import { getCaregivers } from "../../services/caregiverService";
+import {
+  getCaregivers,
+  deactivateCaregiver,
+} from "../../services/caregiverService";
 
 import CaregiverTable from "../../components/caregivers/CaregiverTable";
 import AddCaregiverModal from "../../components/caregivers/AddCaregiverModal";
@@ -139,25 +142,50 @@ export default function CaregiversPage() {
       startIndex + caregiversPerPage
     );
 
-  /*
-   * Delete for now is still UI-only.
-   * We will connect it to delete.php later.
-   */
-  const confirmDeleteCaregiver = () => {
+  const confirmDeleteCaregiver = async () => {
     if (!caregiverToDelete) return;
-
-    setCaregivers((prev) =>
-      prev.filter(
-        (caregiver) =>
-          caregiver.id !== caregiverToDelete.id
-      )
-    );
-
-    setCaregiverToDelete(null);
-
-    showSuccess(
-      "Caregiver deleted successfully."
-    );
+    try {
+      console.log(
+        "Deactivating caregiver ID:",
+        caregiverToDelete.id
+      );
+      const response = await deactivateCaregiver(
+        caregiverToDelete.id
+      );
+      console.log(
+        "DEACTIVATE RESPONSE:",
+        response
+      );
+      if (!response.success) {
+        console.error(
+          "Deactivate failed:",
+          response.message
+        );
+        alert(
+          response.message ||
+            "Failed to deactivate caregiver."
+        );
+        return;
+      }
+      console.log("Reloading caregivers...");
+      await loadCaregivers();
+      setCaregiverToDelete(null);
+      showSuccess(
+        "Caregiver deactivated successfully."
+      );
+    } catch (error: any) {
+      console.error(
+        "Deactivate caregiver error:",
+        error?.response?.data ||
+          error?.message ||
+          error
+      );
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Unable to connect to server."
+      );
+    }
   };
 
   /*

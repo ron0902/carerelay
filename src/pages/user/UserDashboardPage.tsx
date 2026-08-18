@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import {
+  getCaregiverDashboard,
+  getTodaysSchedule,
+} from "../../services/caregiverService";
 import {
   ArrowRight,
   Bell,
@@ -28,6 +33,7 @@ interface ShiftOffer {
 
 export default function UserDashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [offers, setOffers] = useState<ShiftOffer[]>([
     {
       id: 1,
@@ -53,32 +59,111 @@ export default function UserDashboardPage() {
     },
   ]);
 
-  const caregiver = {
-    name: "John Reyes",
+  const [todaysSchedule, setTodaysSchedule] =
+    useState<any[]>([]);
+  const [dashboardData, setDashboardData] = useState({
+    todaysShifts: 0,
+    upcomingVisits: 0,
+    completedVisits: 0,
+  });
+  const [loadingDashboard, setLoadingDashboard] =
+    useState(true);
+
+  const caregiverName = `${user?.first_name ?? ""} ${
+    user?.last_name ?? ""
+  }`.trim();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadCaregiverDashboard();
+    loadTodaysSchedule();
+  }, [user?.id]);
+
+  const loadCaregiverDashboard = async () => {
+    if (!user?.id) return;
+    try {
+      setLoadingDashboard(true);
+      const response =
+        await getCaregiverDashboard(user.id);
+      console.log(
+        "CAREGIVER DASHBOARD API:",
+        response
+      );
+      if (response.success) {
+        setDashboardData({
+          todaysShifts: Number(
+            response.stats?.todaysShifts ?? 0
+          ),
+          upcomingVisits: Number(
+            response.stats?.upcomingVisits ?? 0
+          ),
+          completedVisits: Number(
+            response.stats?.completedVisits ?? 0
+          ),
+        });
+      } else {
+        console.error(response.message);
+      }
+    } catch (error) {
+      console.error(
+        "Caregiver dashboard error:",
+        error
+      );
+    } finally {
+      setLoadingDashboard(false);
+    }
+  };
+
+  const loadTodaysSchedule = async () => {
+    if (!user?.id) return;
+    try {
+      const response =
+        await getTodaysSchedule(user.id);
+      console.log(
+        "TODAY SCHEDULE API:",
+        response
+      );
+      if (response.success) {
+        setTodaysSchedule(
+          response.appointments || []
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Today's schedule error:",
+        error
+      );
+    }
   };
 
   const dashboardStats = [
     {
       title: "Today's Shifts",
-      value: 3,
+      value: loadingDashboard
+        ? "..."
+        : dashboardData.todaysShifts,
       icon: <CalendarDays size={28} />,
       color: "bg-blue-100 text-blue-600",
     },
     {
       title: "Upcoming Visits",
-      value: 5,
+      value: loadingDashboard
+        ? "..."
+        : dashboardData.upcomingVisits,
       icon: <Clock size={28} />,
       color: "bg-green-100 text-green-600",
     },
     {
       title: "Pending Offers",
-      value: 2,
+      value: "...",
       icon: <ClipboardList size={28} />,
       color: "bg-yellow-100 text-yellow-600",
     },
     {
       title: "Completed Visits",
-      value: 18,
+      value: loadingDashboard
+        ? "..."
+        : dashboardData.completedVisits,
       icon: <CheckCircle size={28} />,
       color: "bg-purple-100 text-purple-600",
     },
@@ -109,7 +194,7 @@ export default function UserDashboardPage() {
             <p className="text-blue-100">Good Morning 👋</p>
 
             <h1 className="mt-2 text-4xl font-bold">
-              {caregiver.name}
+              {caregiverName}
             </h1>
 
             <p className="mt-2 text-blue-100">
@@ -149,68 +234,65 @@ export default function UserDashboardPage() {
       <Card>
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Today's Schedule</h2>
-
+            <h2 className="text-xl font-semibold">
+              Today's Schedule
+            </h2>
             <p className="text-sm text-gray-500">
               Your scheduled home care visits.
             </p>
           </div>
-
-          <CalendarDays size={28} className="text-blue-600" />
+          <CalendarDays
+            size={28}
+            className="text-blue-600"
+          />
         </div>
-
         <div className="space-y-4">
-          <div className="rounded-xl border p-5 transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">Maria Santos</h3>
-
-                <p className="mt-1 text-gray-500">Home Care Visit</p>
+          {todaysSchedule.length === 0 ? (
+            <div className="rounded-xl border p-6 text-center text-gray-500">
+              No appointments scheduled for today.
+            </div>
+          ) : (
+            todaysSchedule.map((appointment) => (
+              <div
+                key={appointment.id}
+                className="rounded-xl border p-5 transition hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {appointment.patient_name}
+                    </h3>
+                    <p className="mt-1 text-gray-500">
+                      {appointment.appointment_type}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-600">
+                    {appointment.status}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-gray-500">
+                  <Clock size={18} />
+                  {appointment.appointment_time}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-gray-500">
+                  <MapPin size={18} />
+                  {appointment.location ||
+                    "Location not specified"}
+                </div>
+                <div className="mt-5 flex gap-3">
+                  <Button size="sm">
+                    Start Visit
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                  >
+                    View Details
+                  </Button>
+                </div>
               </div>
-
-              <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-600">
-                Active
-              </span>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2 text-gray-500">
-              <Clock size={18} />
-              8:00 AM - 12:00 PM
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <Button size="sm">Start Visit</Button>
-
-              <Button variant="secondary" size="sm">
-                View Details
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-xl border p-5 transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">Juan Dela Cruz</h3>
-
-                <p className="mt-1 text-gray-500">Medication Assistance</p>
-              </div>
-
-              <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700">
-                Upcoming
-              </span>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2 text-gray-500">
-              <Clock size={18} />
-              1:00 PM - 5:00 PM
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <Button variant="secondary" size="sm">
-                View Details
-              </Button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </Card>
 
