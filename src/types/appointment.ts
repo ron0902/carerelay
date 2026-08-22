@@ -20,10 +20,12 @@ export interface Appointment {
   location: string;
 
   status:
-    | "Scheduled"
+    | "Pending"
+    | "Approved"
+    | "In Progress"
     | "Completed"
     | "Cancelled"
-    | "No Show";
+    | "Rejected";
 
   notes: string;
 

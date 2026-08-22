@@ -55,7 +55,7 @@ export const deactivateCaregiver = async (
 };
 
 export const getCaregiverDashboard = async (
-  userId: string
+  userId: string | number
 ) => {
   const response = await api.post(
     "/caregiver/dashboard.php",
@@ -68,13 +68,56 @@ export const getCaregiverDashboard = async (
 };
 
 export const getTodaysSchedule = async (
-  userId: number | string
+  userId: number | string,
+  startDate?: string,
+  endDate?: string
 ) => {
   const response = await api.post(
     "/caregiver/todaysSchedule.php",
     {
       user_id: userId,
+      ...(startDate ? { start_date: startDate } : {}),
+      ...(endDate ? { end_date: endDate } : {}),
     }
+  );
+
+  return response.data;
+};
+
+export const startCaregiverVisit = async (
+  userId: string | number,
+  appointmentId: string | number
+) => {
+  const response = await api.put(
+    "/caregiver/startVisit.php",
+    {
+      user_id: userId,
+      appointment_id: appointmentId,
+    }
+  );
+
+  return response.data;
+};
+
+export interface VisitReport {
+  checklist: Record<string, boolean>;
+  bloodPressure: string;
+  temperature: string;
+  pulseRate: string;
+  painLevel: string;
+  mood: string;
+  notes: string;
+  recommendation: string;
+}
+
+export const completeCaregiverVisit = async (
+  userId: string | number,
+  appointmentId: string | number,
+  report: VisitReport
+) => {
+  const response = await api.put(
+    "/caregiver/completeVisit.php",
+    { user_id: userId, appointment_id: appointmentId, report }
   );
 
   return response.data;
@@ -87,6 +130,36 @@ export const getMyShifts = async (
     "/caregiver/getMyShifts.php",
     {
       user_id: userId,
+    }
+  );
+
+  return response.data;
+};
+
+export const getShiftOffers = async (
+  userId: string | number
+) => {
+  const response = await api.post(
+    "/caregiver/shiftOffers.php",
+    {
+      user_id: userId,
+    }
+  );
+
+  return response.data;
+};
+
+export const respondToShiftOffer = async (
+  userId: string | number,
+  offerId: string | number,
+  status: "Accepted" | "Declined"
+) => {
+  const response = await api.put(
+    "/caregiver/respondOffer.php",
+    {
+      user_id: userId,
+      offer_id: offerId,
+      status,
     }
   );
 
@@ -130,6 +203,83 @@ export const getCaregiverProfile = async (
       user_id: userId,
     }
   );
+
+  return response.data;
+};
+
+export const updateCaregiverProfile = async (
+  userId: string | number,
+  payload: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    license_number: string;
+    specialization: string;
+    experience_years: number;
+    bio: string;
+  }
+) => {
+  const response = await api.put(
+    "/caregiver/profile/update.php",
+    {
+      user_id: userId,
+      ...payload,
+    }
+  );
+
+  return response.data;
+};
+
+export const changeCaregiverPassword = async (
+  userId: string | number,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const response = await api.put(
+    "/caregiver/profile/changePassword.php",
+    {
+      user_id: userId,
+      current_password: currentPassword,
+      new_password: newPassword,
+    }
+  );
+
+  return response.data;
+};
+
+export const getCaregiverNotifications = async (
+  userId: string | number
+) => {
+  const response = await api.post("/notifications/getAll.php", {
+    user_id: userId,
+  });
+
+  return response.data;
+};
+
+export const getCaregiverCarePlan = async (
+  userId: string | number,
+  patientId: string | number,
+  visitDate?: string
+) => {
+  const response = await api.post("/caregiver/carePlan.php", {
+    user_id: userId,
+    patient_id: patientId,
+    visit_date: visitDate,
+  });
+
+  return response.data;
+};
+
+export const markCaregiverNotificationRead = async (
+  userId: string | number,
+  notificationId: string | number
+) => {
+  const response = await api.put("/notifications/markRead.php", {
+    user_id: userId,
+    notification_id: notificationId,
+  });
 
   return response.data;
 };

@@ -8,6 +8,14 @@ export const getAppointments = async () => {
   return response.data;
 };
 
+export const getPatientAppointments = async (userId: string | number) => {
+  const response = await api.post("/patient/appointments.php", {
+    user_id: userId,
+  });
+
+  return response.data;
+};
+
 export const createAppointment = async (
   payload: any
 ) => {

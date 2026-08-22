@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Bell, LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getCaregiverNotifications } from "../../services/caregiverService";
 
 const menus = [
   { name: "Dashboard", path: "/user/dashboard" },
@@ -13,8 +15,21 @@ const menus = [
 ];
 
 export default function UserSidebar() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    getCaregiverNotifications(user.id)
+      .then((response) => {
+        if (response.success) {
+          setUnreadCount(Number(response.unread_count ?? 0));
+        }
+      })
+      .catch((error) => console.error("Failed to load notification count:", error));
+  }, [user?.id]);
 
   const handleLogout = () => {
     logout();
@@ -52,9 +67,11 @@ export default function UserSidebar() {
                 {menu.name === "Notifications" ? (
                   <>
                     {menu.name}
-                    <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                      2
-                    </span>
+                    {unreadCount > 0 && (
+                      <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                        {unreadCount}
+                      </span>
+                    )}
                   </>
                 ) : (
                   menu.name

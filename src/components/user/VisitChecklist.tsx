@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Card } from "../../components/ui";
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (checklist: Record<string, boolean>) => void;
 }
 
 export default function VisitChecklist({
@@ -24,6 +24,8 @@ export default function VisitChecklist({
       [key]: !prev[key],
     }));
   };
+
+  const checklistComplete = Object.values(checklist).every(Boolean);
 
   return (
     <Card>
@@ -107,7 +109,10 @@ export default function VisitChecklist({
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={onComplete}>
+          <Button
+            onClick={() => onComplete(checklist)}
+            disabled={!checklistComplete}
+          >
             Complete Checklist
           </Button>
         </div>

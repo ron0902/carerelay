@@ -108,7 +108,7 @@ export default function AppointmentsPage() {
             appointment.appointment_type ?? "",
 
           status:
-            appointment.status ?? "Scheduled",
+            appointment.status ?? "Pending",
 
           notes:
             appointment.notes ?? "",
@@ -408,7 +408,11 @@ export default function AppointmentsPage() {
 
       <Card>
 
-        {filteredAppointments.length === 0 ? (
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">
+            Loading appointments...
+          </div>
+        ) : filteredAppointments.length === 0 ? (
           <EmptyState
             title="No appointments found"
             description="Try changing your search or filter."

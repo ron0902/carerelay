@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
 import { CalendarDays, Clock, MapPin, UserCircle2 } from "lucide-react";
 import { getTodaysSchedule } from "../../services/caregiverService";
+import { startCaregiverVisit } from "../../services/caregiverService";
 import { useAuth } from "../../context/AuthContext";
+import CaregiverAppointmentDetailsModal, {
+  type CaregiverAppointment,
+} from "../../components/user/CaregiverAppointmentDetailsModal";
 
 interface Schedule {
   id: number;
@@ -11,7 +15,14 @@ interface Schedule {
   location: string;
   date: string;
   time: string;
-  status: "Active" | "Upcoming" | "Completed" | "Cancelled";
+  status:
+    | "Pending"
+    | "Approved"
+    | "In Progress"
+    | "Completed"
+    | "Cancelled"
+    | "Rejected";
+  appointment: CaregiverAppointment;
 }
 
 export default function MySchedulePage() {
@@ -22,6 +33,8 @@ export default function MySchedulePage() {
   );
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<CaregiverAppointment | null>(null);
 
   useEffect(() => {
     loadSchedule();
@@ -32,7 +45,15 @@ export default function MySchedulePage() {
 
     try {
       setLoading(true);
-      const response = await getTodaysSchedule(Number(user.id));
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+      const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+      const response = await getTodaysSchedule(
+        user.id,
+        formatDate(startDate),
+        formatDate(endDate)
+      );
       console.log("MY SCHEDULE API:", response);
 
       if (!response.success) {
@@ -44,15 +65,31 @@ export default function MySchedulePage() {
         (item: any) => {
           const statusValue = String(item.status ?? "Active");
           const normalizedStatus: Schedule["status"] =
-            statusValue === "Active" ||
-            statusValue === "Upcoming" ||
+            statusValue === "Pending" ||
+            statusValue === "Approved" ||
+            statusValue === "In Progress" ||
             statusValue === "Completed" ||
-            statusValue === "Cancelled"
+            statusValue === "Cancelled" ||
+            statusValue === "Rejected"
               ? (statusValue as Schedule["status"])
-              : "Active";
+              : "Pending";
 
           const startDate = item.start_date || item.assigned_date || item.appointment_date || "";
           const shiftText = item.shift || item.appointment_time || "";
+
+          const appointment: CaregiverAppointment = {
+            id: Number(item.id),
+            patient_name: item.patient_name ?? "Unknown Patient",
+            organization_name: item.organization_name,
+            appointment_date: item.appointment_date ?? startDate,
+            appointment_time: item.appointment_time ?? shiftText,
+            duration: Number(item.duration ?? 60),
+            appointment_type: item.appointment_type ?? "Home Visit",
+            reason: item.reason ?? "",
+            location: item.location ?? item.organization_name ?? null,
+            status: statusValue,
+            notes: item.notes ?? null,
+          };
 
           return {
             id: Number(item.id),
@@ -64,6 +101,7 @@ export default function MySchedulePage() {
               shiftText ||
               (item.end_date ? `${item.start_date} - ${item.end_date}` : startDate),
             status: normalizedStatus,
+            appointment,
           };
         }
       );
@@ -76,12 +114,35 @@ export default function MySchedulePage() {
     }
   };
 
+  const handleStartVisit = async (schedule: Schedule) => {
+    if (!user?.id) return;
+
+    try {
+      const response = await startCaregiverVisit(user.id, schedule.id);
+      if (!response.success) {
+        window.alert(response.message || "Unable to start visit.");
+        return;
+      }
+      await loadSchedule();
+    } catch (error) {
+      console.error("Failed to start visit:", error);
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+      };
+      window.alert(
+        apiError.response?.data?.message || "Failed to start visit."
+      );
+    }
+  };
+
   const badgeColor = (status: Schedule["status"]) => {
     switch (status) {
-      case "Active":
+      case "Approved":
         return "bg-green-100 text-green-700";
-      case "Upcoming":
+      case "Pending":
         return "bg-yellow-100 text-yellow-700";
+      case "In Progress":
+        return "bg-blue-100 text-blue-700";
       case "Completed":
         return "bg-blue-100 text-blue-700";
       case "Cancelled":
@@ -132,10 +193,12 @@ export default function MySchedulePage() {
             className="rounded-lg border p-3"
           >
             <option value="All">All</option>
-            <option value="Active">Active</option>
-            <option value="Upcoming">Upcoming</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
+            <option value="Rejected">Rejected</option>
           </select>
         </div>
       </Card>
@@ -193,15 +256,27 @@ export default function MySchedulePage() {
               </div>
 
               <div className="flex flex-wrap gap-2 lg:justify-end">
-                {schedule.status === "Active" ? (
+                {schedule.status === "Pending" ||
+                schedule.status === "Approved" ||
+                schedule.status === "In Progress" ? (
                   <>
-                    <Button size="sm">Start Visit</Button>
-                    <Button variant="secondary" size="sm">
+                    <Button size="sm" onClick={() => void handleStartVisit(schedule)}>
+                      Start Visit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setSelectedAppointment(schedule.appointment)}
+                    >
                       Patient Details
                     </Button>
                   </>
                 ) : (
-                  <Button variant="secondary" size="sm">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSelectedAppointment(schedule.appointment)}
+                  >
                     View Details
                   </Button>
                 )}
@@ -210,6 +285,12 @@ export default function MySchedulePage() {
           </Card>
         ))
       )}
+
+      <CaregiverAppointmentDetailsModal
+        open={selectedAppointment !== null}
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+      />
     </div>
   );
 }

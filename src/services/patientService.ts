@@ -28,3 +28,21 @@ export const deletePatient = async (id: number) => {
 
   return response.data;
 };
+
+export const getPatientNotifications = async (userId: string | number) => {
+  const response = await api.post("/notifications/getAll.php", {
+    user_id: userId,
+  });
+  return response.data;
+};
+
+export const markPatientNotificationRead = async (
+  userId: string | number,
+  notificationId: string | number
+) => {
+  const response = await api.put("/notifications/markRead.php", {
+    user_id: userId,
+    notification_id: notificationId,
+  });
+  return response.data;
+};

@@ -64,6 +64,24 @@ try {
         }
     }
 
+    $allowedStatuses = [
+        "Pending",
+        "Approved",
+        "In Progress",
+        "Completed",
+        "Cancelled",
+        "Rejected"
+    ];
+
+    if (!in_array($data["status"], $allowedStatuses, true)) {
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => "Invalid appointment status."
+        ]);
+        exit;
+    }
+
     // =====================================
     // CHECK PATIENT
     // =====================================

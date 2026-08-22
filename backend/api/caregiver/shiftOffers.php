@@ -8,10 +8,8 @@ try {
     $database = new Database();
     $db = $database->connect();
 
-    $input = json_decode(file_get_contents("php://input"), true);
+    $input = json_decode(file_get_contents("php://input"), true) ?? [];
     $userId = $input["user_id"] ?? null;
-    $startDate = $input["start_date"] ?? date("Y-m-d");
-    $endDate = $input["end_date"] ?? $startDate;
 
     if (!$userId) {
         http_response_code(400);
@@ -22,12 +20,9 @@ try {
         exit;
     }
 
-    $caregiverStmt = $db->prepare("
-        SELECT id
-        FROM caregivers
-        WHERE user_id = ?
-        LIMIT 1
-    ");
+    $caregiverStmt = $db->prepare(
+        "SELECT id FROM caregivers WHERE user_id = ? LIMIT 1"
+    );
     $caregiverStmt->execute([$userId]);
     $caregiver = $caregiverStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -44,45 +39,49 @@ try {
 
     $sql = "
         SELECT
-            a.id,
+            so.id,
+            so.assignment_id,
+            so.caregiver_id,
+            so.offered_by,
+            so.status AS offer_status,
+            so.offered_at,
+            so.responded_at,
             a.patient_id,
+            a.caregiver_id,
             a.organization_id,
-            a.appointment_date,
-            a.appointment_time,
-            a.duration,
-            a.appointment_type,
-            a.reason,
-            a.location,
-            a.status,
-            a.notes,
+            a.assigned_date,
+            a.start_date,
+            a.end_date,
+            a.shift,
+            a.status AS assignment_status,
+            a.remarks,
             CONCAT(
                 patient_user.first_name,
                 ' ',
                 patient_user.last_name
             ) AS patient_name,
             o.organization_name AS organization_name
-        FROM appointments a
+        FROM shift_offers so
+        INNER JOIN assignments a
+            ON so.assignment_id = a.id
         INNER JOIN patients p
             ON a.patient_id = p.id
         INNER JOIN users patient_user
             ON p.user_id = patient_user.id
         LEFT JOIN organizations o
             ON a.organization_id = o.id
-                WHERE a.caregiver_id = ?
-                    AND a.appointment_date BETWEEN ? AND ?
-          AND a.status IN ('Pending', 'Approved', 'In Progress', 'Completed', 'Cancelled')
-        ORDER BY a.appointment_time ASC
+        WHERE so.caregiver_id = ?
+        ORDER BY so.offered_at DESC
     ";
 
     $stmt = $db->prepare($sql);
-    $stmt->execute([$caregiverId, $startDate, $endDate]);
-    $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$caregiverId]);
+    $offers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         "success" => true,
-        "appointments" => $appointments,
-        "schedules" => $appointments,
-        "message" => "Today's schedule retrieved successfully."
+        "offers" => $offers,
+        "message" => "Shift offers retrieved successfully."
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

@@ -30,6 +30,7 @@ import MySchedulePage from "../pages/user/MySchedulePage";
 import NotificationsPage from "../pages/user/NotificationsPage";
 import AppointmentsPage from "../pages/appointments/AppointmentsPage";
 import ReportsPage from "../pages/reports/ReportsPage";
+import CarePlansPage from "../pages/carePlans/CarePlansPage";
 
 export default function AppRouter() {
  return (
@@ -47,7 +48,7 @@ export default function AppRouter() {
     {/* Admin */}
     <Route
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["Admin"]}>
           <DashboardLayout />
         </ProtectedRoute>
       }
@@ -57,6 +58,7 @@ export default function AppRouter() {
       <Route path="/caregivers" element={<CaregiversPage />} />
       <Route path="/organizations" element={<OrganizationsPage />} />
       <Route path="/assignments" element={<AssignmentsPage />} />
+      <Route path="/care-plans" element={<CarePlansPage />} />
       <Route path="/appointments" element={<AppointmentsPage />} />
       <Route path="/reports" element={<ReportsPage />} />
     </Route>
@@ -64,7 +66,7 @@ export default function AppRouter() {
     {/* Caregiver */}
     <Route
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["Caregiver"]}>
           <UserLayout />
         </ProtectedRoute>
       }
@@ -81,7 +83,7 @@ export default function AppRouter() {
     {/* Patient */}
     <Route
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["Patient"]}>
           <PatientLayout />
         </ProtectedRoute>
       }

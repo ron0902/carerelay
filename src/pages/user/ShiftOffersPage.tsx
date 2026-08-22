@@ -1,61 +1,83 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card } from "../../components/ui";
-import ShiftOfferDetailsModal, {
-  type ShiftOffer as ModalShiftOffer,
-} from "../../components/user/ShiftOfferDetailsModal";
-import ShiftOfferConfirmModal from "../../components/user/ShiftOfferConfirmModal";
+import CaregiverShiftOfferDetailsModal, {
+  type CaregiverShiftOffer,
+} from "../../components/user/CaregiverShiftOfferDetailsModal";
+import { useAuth } from "../../context/AuthContext";
 import {
-  Building2,
+  getShiftOffers,
+  respondToShiftOffer,
+} from "../../services/caregiverService";
+import {
   CalendarDays,
   Clock,
-  MapPin,
   UserCircle2,
 } from "lucide-react";
 
-interface ShiftOffer {
-  id: number;
-  organization: string;
-  patient: string;
-  service: string;
-  date: string;
-  time: string;
-  location: string;
-  duration: string;
-  status: "Pending" | "Accepted" | "Declined";
-}
-
 export default function ShiftOffersPage() {
-  const [offers, setOffers] = useState<ShiftOffer[]>([
-    {
-      id: 1,
-      organization: "Sunrise Care",
-      patient: "Maria Santos",
-      service: "Home Care Visit",
-      date: "July 30, 2026",
-      time: "8:00 AM - 4:00 PM",
-      location: "General Santos City",
-      duration: "8 Hours",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      organization: "HealthFirst",
-      patient: "Juan Dela Cruz",
-      service: "Medication Assistance",
-      date: "August 1, 2026",
-      time: "9:00 AM - 1:00 PM",
-      location: "Koronadal City",
-      duration: "4 Hours",
-      status: "Pending",
-    },
-  ]);
+  const { user } = useAuth();
+  const [offers, setOffers] = useState<CaregiverShiftOffer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [respondingOfferId, setRespondingOfferId] = useState<number | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<CaregiverShiftOffer | null>(null);
 
-  const [selectedOffer, setSelectedOffer] =
-    useState<ModalShiftOffer | null>(null);
-  const [confirmAction, setConfirmAction] =
-    useState<"Accepted" | "Declined" | null>(null);
+  useEffect(() => {
+    loadOffers();
+  }, [user?.id]);
 
-  const badgeColor = (status: ShiftOffer["status"]) => {
+  const loadOffers = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const response = await getShiftOffers(user.id);
+      console.log("SHIFT OFFERS API:", JSON.stringify(response, null, 2));
+
+      if (!response.success) {
+        console.error(response.message);
+        setOffers([]);
+        return;
+      }
+
+      setOffers(response.offers || []);
+    } catch (error) {
+      console.error("Failed to load shift offers:", error);
+      setOffers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOfferResponse = async (
+    offerId: number,
+    status: "Accepted" | "Declined"
+  ) => {
+    if (!user?.id) return;
+
+    try {
+      setRespondingOfferId(offerId);
+      const response = await respondToShiftOffer(
+        user.id,
+        offerId,
+        status
+      );
+
+      if (!response.success) {
+        window.alert(response.message || "Unable to update shift offer.");
+        return;
+      }
+
+      setSelectedOffer(null);
+      await loadOffers();
+    } catch (error) {
+      console.error("Failed to respond to shift offer:", error);
+      window.alert("Failed to respond to shift offer.");
+    } finally {
+      setRespondingOfferId(null);
+    }
+  };
+
+  const badgeColor = (status: CaregiverShiftOffer["offer_status"]) => {
     switch (status) {
       case "Accepted":
         return "bg-green-100 text-green-700";
@@ -66,128 +88,101 @@ export default function ShiftOffersPage() {
     }
   };
 
-  const updateOfferStatus = (
-    id: number,
-    status: "Accepted" | "Declined"
-  ) => {
-    setOffers((prev) =>
-      prev.map((offer) =>
-        offer.id === id
-          ? { ...offer, status }
-          : offer
-      )
-    );
-
-    setSelectedOffer(null);
-  };
-
-  const handleConfirmAction = () => {
-    if (!selectedOffer || !confirmAction) return;
-
-    updateOfferStatus(selectedOffer.id, confirmAction);
-    setConfirmAction(null);
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">
-          Shift Offers
-        </h1>
-
+        <h1 className="text-3xl font-bold">Shift Offers</h1>
         <p className="text-gray-500">
           Review and respond to available shift offers.
         </p>
       </div>
 
       <div className="space-y-4">
-        {offers.map((offer) => (
-          <Card
-            key={offer.id}
-            className="rounded-xl border p-5 transition hover:-translate-y-1 hover:shadow-lg"
-          >
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex gap-3">
-                <div className="rounded-2xl bg-slate-100 p-3">
-                  <UserCircle2 size={24} className="text-blue-600" />
-                </div>
-
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-xl font-semibold">{offer.patient}</h2>
-                    <span
-                      className={`rounded-full px-3 py-1 text-sm font-medium ${badgeColor(
-                        offer.status
-                      )}`}
-                    >
-                      {offer.status}
-                    </span>
+        {loading ? (
+          <div className="rounded-xl border p-6 text-center text-gray-500">
+            Loading shift offers...
+          </div>
+        ) : offers.length === 0 ? (
+          <div className="rounded-xl border p-6 text-center text-gray-500">
+            No shift offers available.
+          </div>
+        ) : (
+          offers.map((offer) => (
+            <Card
+              key={offer.id}
+              className="rounded-xl border p-5 transition hover:-translate-y-1 hover:shadow-lg"
+            >
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex gap-3">
+                  <div className="rounded-2xl bg-slate-100 p-3">
+                    <UserCircle2 size={24} className="text-blue-600" />
                   </div>
 
-                  <p className="mt-1 text-sm text-slate-600">{offer.service}</p>
-                  <p className="mt-2 text-sm text-slate-500">{offer.organization}</p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-xl font-semibold">
+                        {offer.patient_name}
+                      </h2>
+                      <span
+                        className={`rounded-full px-3 py-1 text-sm font-medium ${badgeColor(
+                          offer.offer_status
+                        )}`}
+                      >
+                        {offer.offer_status}
+                      </span>
+                    </div>
 
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays size={16} />
-                      {offer.date}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock size={16} />
-                      {offer.time}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      {offer.location}
+                    <p className="mt-1 text-sm text-slate-600">
+                      Caregiver Shift
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      {offer.organization_name || "Organization not specified"}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-500">
+                      <span className="flex items-center gap-2">
+                        <CalendarDays size={16} />
+                        {offer.start_date}
+                        {offer.end_date ? ` - ${offer.end_date}` : ""}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Clock size={16} />
+                        {offer.shift}
+                      </span>
                     </div>
                   </div>
-
-                  <p className="mt-3 text-sm font-medium text-slate-600">
-                    Duration: {offer.duration}
-                  </p>
                 </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSelectedOffer(offer)}
+                >
+                  View Details
+                </Button>
               </div>
-
-              {offer.status === "Pending" && (
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => setSelectedOffer(offer)}>
-                    View Details
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => updateOfferStatus(offer.id, "Declined")}
-                  >
-                    Decline
-                  </Button>
-                </div>
-              )}
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
-      <ShiftOfferDetailsModal
+      <CaregiverShiftOfferDetailsModal
         open={selectedOffer !== null}
         offer={selectedOffer}
+        responding={
+          selectedOffer !== null && respondingOfferId === selectedOffer.id
+        }
         onClose={() => setSelectedOffer(null)}
         onAccept={() => {
-          setConfirmAction("Accepted");
+          if (selectedOffer) {
+            void handleOfferResponse(selectedOffer.id, "Accepted");
+          }
         }}
         onDecline={() => {
-          setConfirmAction("Declined");
+          if (selectedOffer) {
+            void handleOfferResponse(selectedOffer.id, "Declined");
+          }
         }}
-      />
-
-      <ShiftOfferConfirmModal
-        open={confirmAction !== null && selectedOffer !== null}
-        offer={selectedOffer}
-        action={confirmAction}
-        onClose={() => {
-          setConfirmAction(null);
-          setSelectedOffer(null);
-        }}
-        onConfirm={handleConfirmAction}
       />
     </div>
   );

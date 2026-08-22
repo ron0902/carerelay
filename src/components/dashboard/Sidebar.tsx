@@ -5,6 +5,7 @@ import {
   UserCog,
   Building2,
   ClipboardList,
+  ClipboardCheck,
   CalendarDays,
   FileText,
   Settings,
@@ -38,6 +39,11 @@ const menus = [
     name: "Assignments",
     path: "/assignments",
     icon: ClipboardList,
+  },
+  {
+    name: "Care Plans",
+    path: "/care-plans",
+    icon: ClipboardCheck,
   },
   {
     name: "Appointments",

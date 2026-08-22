@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { Button, Modal } from "../../components/ui";
+import type { VisitReport } from "../../services/caregiverService";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  checklist: Record<string, boolean>;
+  onSubmit: (report: VisitReport) => void | Promise<void>;
+  submitting?: boolean;
 }
 
 export default function VisitNotesModal({
   open,
   onClose,
+  checklist,
   onSubmit,
+  submitting = false,
 }: Props) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Omit<VisitReport, "checklist">>({
     bloodPressure: "",
     temperature: "",
     pulseRate: "",
@@ -22,10 +27,8 @@ export default function VisitNotesModal({
     recommendation: "",
   });
 
-  const handleSubmit = () => {
-    console.log(form);
-    onSubmit();
-    onClose();
+  const handleSubmit = async () => {
+    await onSubmit({ ...form, checklist });
   };
 
   return (
@@ -135,9 +138,10 @@ export default function VisitNotesModal({
           </Button>
 
           <Button
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
+            disabled={submitting}
           >
-            Submit Visit
+            {submitting ? "Submitting..." : "Submit Visit"}
           </Button>
 
         </div>

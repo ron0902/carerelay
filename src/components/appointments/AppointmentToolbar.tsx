@@ -32,9 +32,12 @@ export default function AppointmentToolbar({
         }
       >
         <option>All</option>
-        <option>Scheduled</option>
+        <option>Pending</option>
+        <option>Approved</option>
+        <option>In Progress</option>
         <option>Completed</option>
         <option>Cancelled</option>
+        <option>Rejected</option>
       </select>
     </div>
   );

@@ -60,6 +60,24 @@ try {
             a.shift,
             a.status,
             a.remarks,
+                        (
+                                SELECT ap.id
+                                FROM appointments ap
+                                WHERE ap.caregiver_id = a.caregiver_id
+                                    AND ap.patient_id = a.patient_id
+                                    AND ap.appointment_date BETWEEN a.start_date AND COALESCE(a.end_date, a.start_date)
+                                ORDER BY ap.appointment_date DESC, ap.appointment_time DESC, ap.id DESC
+                                LIMIT 1
+                        ) AS appointment_id,
+            (
+                SELECT ap.status
+                FROM appointments ap
+                WHERE ap.caregiver_id = a.caregiver_id
+                    AND ap.patient_id = a.patient_id
+                    AND ap.appointment_date BETWEEN a.start_date AND COALESCE(a.end_date, a.start_date)
+                ORDER BY ap.appointment_date DESC, ap.appointment_time DESC, ap.id DESC
+                LIMIT 1
+            ) AS appointment_status,
             CONCAT(
                 patient_user.first_name,
                 ' ',

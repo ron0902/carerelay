@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -8,63 +8,71 @@ import {
 } from "lucide-react";
 
 import { Button, Card, EmptyState } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
+import {
+  getPatientNotifications,
+  markPatientNotificationRead,
+} from "../../services/patientService";
 
 interface PatientNotification {
   id: number;
   title: string;
   message: string;
-  type: "Appointment" | "Caregiver" | "Care Plan" | "System";
+  type: string;
   time: string;
   read: boolean;
 }
 
 export default function PatientNotificationsPage() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<
     PatientNotification[]
-  >([
-    {
-      id: 1,
-      title: "Appointment Confirmed",
-      message:
-        "Your home care visit with John Reyes has been confirmed.",
-      type: "Appointment",
-      time: "10 minutes ago",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Caregiver Updated",
-      message:
-        "John Reyes is now assigned as your primary caregiver.",
-      type: "Caregiver",
-      time: "1 hour ago",
-      read: false,
-    },
-    {
-      id: 3,
-      title: "Care Plan Updated",
-      message:
-        "Your current care plan has been reviewed and updated.",
-      type: "Care Plan",
-      time: "Yesterday",
-      read: true,
-    },
-    {
-      id: 4,
-      title: "Appointment Reminder",
-      message:
-        "You have a scheduled visit tomorrow at 9:00 AM.",
-      type: "System",
-      time: "Yesterday",
-      read: true,
-    },
-  ]);
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadNotifications = async () => {
+      try {
+        setLoading(true);
+        const response = await getPatientNotifications(user.id);
+        setNotifications(
+          response.success
+            ? (response.notifications || []).map((item: any) => ({
+                id: Number(item.id),
+                title: item.title,
+                message: item.message,
+                type: item.type,
+                time: new Date(item.created_at).toLocaleString(),
+                read: Boolean(Number(item.is_read)),
+              }))
+            : []
+        );
+      } catch (error) {
+        console.error("Failed to load patient notifications:", error);
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadNotifications();
+  }, [user?.id]);
 
   const unreadCount = notifications.filter(
     (notification) => !notification.read
   ).length;
 
-  const markAsRead = (id: number) => {
+  const markAsRead = async (id: number) => {
+    if (!user?.id) return;
+
+    try {
+      await markPatientNotificationRead(user.id, id);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === id
@@ -74,12 +82,11 @@ export default function PatientNotificationsPage() {
     );
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((notification) => ({
-        ...notification,
-        read: true,
-      }))
+  const markAllAsRead = async () => {
+    await Promise.all(
+      notifications
+        .filter((notification) => !notification.read)
+        .map((notification) => markAsRead(notification.id))
     );
   };
 
@@ -168,7 +175,9 @@ export default function PatientNotificationsPage() {
       </Card>
 
       {/* Notification List */}
-      {notifications.length === 0 ? (
+      {loading ? (
+        <Card><p className="text-gray-500">Loading notifications...</p></Card>
+      ) : notifications.length === 0 ? (
         <Card>
           <EmptyState
             title="No notifications"
@@ -219,9 +228,7 @@ export default function PatientNotificationsPage() {
                   {!notification.read && (
                     <button
                       type="button"
-                      onClick={() =>
-                        markAsRead(notification.id)
-                      }
+                      onClick={() => void markAsRead(notification.id)}
                       className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
                     >
                       Mark as read

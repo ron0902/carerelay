@@ -8,21 +8,37 @@ import {
   UserCircle2,
 } from "lucide-react";
 import VisitDetailsModal, {
+  type CarePlan,
   type VisitShift,
 } from "../../components/user/VisitDetailsModal";
 import VisitChecklist from "../../components/user/VisitChecklist";
 import VisitNotesModal from "../../components/user/VisitNotesModal";
 import { useAuth } from "../../context/AuthContext";
-import { getMyShifts } from "../../services/caregiverService";
+import {
+  completeCaregiverVisit,
+  getMyShifts,
+  getCaregiverCarePlan,
+  startCaregiverVisit,
+  type VisitReport,
+} from "../../services/caregiverService";
 
 export interface Shift {
   id: number;
+  appointmentId: number | null;
+  patientId: number | null;
   patient: string;
   service: string;
   date: string;
   time: string;
   location: string;
-  status: "Upcoming" | "Active" | "Completed" | "Cancelled";
+  status:
+    | "Pending"
+    | "Approved"
+    | "In Progress"
+    | "Completed"
+    | "Cancelled"
+    | "Rejected"
+    | "Active";
 }
 
 export default function MyShiftsPage() {
@@ -39,6 +55,11 @@ export default function MyShiftsPage() {
   const [visitModalOpen, setVisitModalOpen] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [visitNotesOpen, setVisitNotesOpen] = useState(false);
+  const [visitChecklist, setVisitChecklist] = useState<Record<string, boolean>>({});
+  const [submittingVisit, setSubmittingVisit] = useState(false);
+  const [activeAppointmentId, setActiveAppointmentId] = useState<number | null>(null);
+  const [carePlan, setCarePlan] = useState<CarePlan | null>(null);
+  const [loadingCarePlan, setLoadingCarePlan] = useState(false);
 
   const loadMyShifts = async () => {
     if (!user?.id) return;
@@ -47,7 +68,7 @@ export default function MyShiftsPage() {
       const response = await getMyShifts(user.id);
       console.log(
         "MY SHIFTS API:",
-        response
+        JSON.stringify(response, null, 2)
       );
       if (!response.success) {
         console.error(
@@ -59,21 +80,24 @@ export default function MyShiftsPage() {
         response.shifts || []
       ).map((assignment: any) => {
         let status: Shift["status"];
-        if (assignment.status === "Active") {
+        const appointmentStatus = assignment.appointment_status;
+        if (["Pending", "Approved", "In Progress", "Completed", "Cancelled", "Rejected"].includes(appointmentStatus)) {
+          status = appointmentStatus as Shift["status"];
+        } else if (assignment.status === "Active") {
           status = "Active";
-        } else if (
-          assignment.status === "Completed"
-        ) {
+        } else if (assignment.status === "Completed") {
           status = "Completed";
-        } else if (
-          assignment.status === "Cancelled"
-        ) {
-          status = "Cancelled";
         } else {
-          status = "Upcoming";
+          status = "Cancelled";
         }
         return {
           id: Number(assignment.id),
+          appointmentId: assignment.appointment_id
+            ? Number(assignment.appointment_id)
+            : null,
+          patientId: assignment.patient_id
+            ? Number(assignment.patient_id)
+            : null,
           patient:
             assignment.patient_name ?? "",
           service:
@@ -104,12 +128,37 @@ export default function MyShiftsPage() {
     loadMyShifts();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id || !activeVisit?.patientId || !visitModalOpen) return;
+
+    const loadCarePlan = async () => {
+      try {
+        setLoadingCarePlan(true);
+        const response = await getCaregiverCarePlan(
+          user.id,
+          activeVisit.patientId as number,
+          activeVisit.date
+        );
+        setCarePlan(response.success ? response.care_plan ?? null : null);
+      } catch (error) {
+        console.error("Failed to load care plan:", error);
+        setCarePlan(null);
+      } finally {
+        setLoadingCarePlan(false);
+      }
+    };
+
+    void loadCarePlan();
+  }, [activeVisit?.patientId, user?.id, visitModalOpen]);
+
   const badgeColor = (status: Shift["status"]) => {
     switch (status) {
-      case "Active":
+      case "Approved":
         return "bg-green-100 text-green-700";
-      case "Upcoming":
+      case "Pending":
         return "bg-yellow-100 text-yellow-700";
+      case "In Progress":
+        return "bg-blue-100 text-blue-700";
       case "Completed":
         return "bg-blue-100 text-blue-700";
       case "Cancelled":
@@ -134,8 +183,10 @@ export default function MyShiftsPage() {
   const availableDates = Array.from(new Set(shifts.map((shift) => shift.date)));
 
   const openVisitDetails = (shift: Shift) => {
+    setActiveAppointmentId(shift.appointmentId);
     setActiveVisit({
-      id: shift.id,
+      id: shift.appointmentId ?? shift.id,
+      patientId: shift.patientId,
       patient: shift.patient,
       service: shift.service,
       date: shift.date,
@@ -147,8 +198,10 @@ export default function MyShiftsPage() {
   };
 
   const handleStartVisit = (shift: Shift) => {
+    setActiveAppointmentId(shift.appointmentId);
     setActiveVisit({
-      id: shift.id,
+      id: shift.appointmentId ?? shift.id,
+      patientId: shift.patientId,
       patient: shift.patient,
       service: shift.service,
       date: shift.date,
@@ -157,6 +210,33 @@ export default function MyShiftsPage() {
       status: shift.status,
     });
     setVisitModalOpen(true);
+  };
+
+  const handleStartChecklist = async () => {
+    if (!user?.id || !activeAppointmentId) {
+      window.alert("This shift has no appointment available to start.");
+      return;
+    }
+
+    try {
+      const response = await startCaregiverVisit(user.id, activeAppointmentId);
+      if (!response.success) {
+        window.alert(response.message || "Unable to start visit.");
+        return;
+      }
+
+      setVisitModalOpen(false);
+      setShowChecklist(true);
+      await loadMyShifts();
+    } catch (error) {
+      console.error("Failed to start visit:", error);
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+      };
+      window.alert(
+        apiError.response?.data?.message || "Failed to start visit."
+      );
+    }
   };
 
   return (
@@ -187,10 +267,12 @@ export default function MyShiftsPage() {
             className="rounded-lg border border-slate-200 p-3"
           >
             <option value="All">Status</option>
-            <option value="Active">Active</option>
-            <option value="Upcoming">Upcoming</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
+            <option value="Rejected">Rejected</option>
           </select>
 
           <select
@@ -219,13 +301,6 @@ export default function MyShiftsPage() {
           </div>
         ) : (
           <>
-            <div className="hidden lg:grid lg:grid-cols-[1.6fr,1fr,1fr,0.8fr] lg:gap-4 lg:border-b lg:px-4 lg:py-3 lg:text-sm lg:font-semibold lg:text-slate-600">
-              <div>Patient</div>
-              <div>Date</div>
-              <div>Time</div>
-              <div>Status</div>
-            </div>
-
             <div className="space-y-3 p-2 lg:p-0">
               {filteredShifts.map((shift) => (
             <div
@@ -270,7 +345,9 @@ export default function MyShiftsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 lg:justify-end">
-                  {shift.status === "Active" ? (
+                  {shift.status === "Pending" ||
+                  shift.status === "Approved" ||
+                  shift.status === "In Progress" ? (
                     <>
                       <Button size="sm" onClick={() => handleStartVisit(shift)}>
                         Start Visit
@@ -304,19 +381,20 @@ export default function MyShiftsPage() {
       <VisitDetailsModal
         open={visitModalOpen}
         shift={activeVisit}
+        carePlan={carePlan}
+        loadingCarePlan={loadingCarePlan}
         onClose={() => {
           setVisitModalOpen(false);
           setActiveVisit(null);
+          setActiveAppointmentId(null);
         }}
-        onStartChecklist={() => {
-          setVisitModalOpen(false);
-          setShowChecklist(true);
-        }}
+        onStartChecklist={() => void handleStartChecklist()}
       />
 
       {showChecklist && (
         <VisitChecklist
-          onComplete={() => {
+          onComplete={(checklist) => {
+            setVisitChecklist(checklist);
             setShowChecklist(false);
             setVisitNotesOpen(true);
           }}
@@ -325,24 +403,42 @@ export default function MyShiftsPage() {
 
       <VisitNotesModal
         open={visitNotesOpen}
+        checklist={visitChecklist}
         onClose={() => setVisitNotesOpen(false)}
-        onSubmit={() => {
-          setVisitNotesOpen(false);
+        submitting={submittingVisit}
+        onSubmit={async (report: VisitReport) => {
+          if (!user?.id || !activeVisit) return;
 
-          if (activeVisit) {
+          try {
+            setSubmittingVisit(true);
+            const response = await completeCaregiverVisit(
+              user.id,
+              activeVisit.id,
+              report
+            );
+
+            if (!response.success) {
+              window.alert(response.message || "Unable to submit visit.");
+              return;
+            }
+
             setShifts((prev) =>
               prev.map((shift) =>
                 shift.id === activeVisit.id
-                  ? {
-                      ...shift,
-                      status: "Completed",
-                    }
+                  ? { ...shift, status: "Completed" }
                   : shift
               )
             );
+            setVisitNotesOpen(false);
+            setActiveVisit(null);
+            setActiveAppointmentId(null);
+            await loadMyShifts();
+          } catch (error) {
+            console.error("Failed to complete visit:", error);
+            window.alert("Failed to submit visit.");
+          } finally {
+            setSubmittingVisit(false);
           }
-
-          setActiveVisit(null);
         }}
       />
     </div>

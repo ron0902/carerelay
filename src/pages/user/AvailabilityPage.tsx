@@ -105,6 +105,19 @@ export default function AvailabilityPage() {
   const handleSave = async () => {
     if (!user?.id) return;
 
+    const invalidDay = availability.find((item) => {
+      if (!item.enabled) return false;
+      if (!item.startTime || !item.endTime) return true;
+      return toMinutes(item.endTime) <= toMinutes(item.startTime);
+    });
+
+    if (invalidDay) {
+      window.alert(
+        `${invalidDay.day} must have a start and end time, with the end after the start.`
+      );
+      return;
+    }
+
     try {
       setSaving(true);
       const response = await saveCaregiverAvailability(user.id, availability);
@@ -114,7 +127,7 @@ export default function AvailabilityPage() {
         return;
       }
 
-      console.log("Availability saved:", availability);
+      window.alert("Availability saved successfully.");
     } catch (error) {
       console.error("Failed to save availability:", error);
     } finally {

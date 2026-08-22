@@ -2,6 +2,7 @@ import { Button, Modal } from "../../components/ui";
 
 export interface VisitShift {
   id: number;
+  patientId: number | null;
   patient: string;
   date: string;
   time: string;
@@ -10,11 +11,23 @@ export interface VisitShift {
   location?: string;
 }
 
+export interface CarePlan {
+  title: string;
+  diagnosis: string | null;
+  care_goal: string;
+  medications: string | null;
+  instructions: string | null;
+  start_date: string;
+  end_date: string | null;
+}
+
 interface VisitDetailsModalProps {
   open: boolean;
   shift: VisitShift | null;
   onClose: () => void;
   onStartChecklist: () => void;
+  carePlan: CarePlan | null;
+  loadingCarePlan: boolean;
 }
 
 export default function VisitDetailsModal({
@@ -22,6 +35,8 @@ export default function VisitDetailsModal({
   shift,
   onClose,
   onStartChecklist,
+  carePlan,
+  loadingCarePlan,
 }: VisitDetailsModalProps) {
   if (!shift) return null;
 
@@ -72,12 +87,7 @@ export default function VisitDetailsModal({
             <p className="text-sm text-gray-500">
               Emergency Contact
             </p>
-            <p className="font-medium">
-              Maria's Daughter
-            </p>
-            <p className="text-sm text-gray-500">
-              0912-345-6789
-            </p>
+            <p className="font-medium">Not available</p>
           </div>
         </div>
 
@@ -86,12 +96,27 @@ export default function VisitDetailsModal({
             Care Plan
           </h3>
 
-          <ul className="list-disc space-y-1 pl-5 text-gray-700">
-            <li>Assist with mobility.</li>
-            <li>Monitor blood pressure.</li>
-            <li>Administer prescribed medication.</li>
-            <li>Record observations.</li>
-          </ul>
+          {loadingCarePlan ? (
+            <p className="text-gray-500">Loading care plan...</p>
+          ) : carePlan ? (
+            <div className="space-y-3 rounded-lg bg-gray-50 p-4 text-gray-700">
+              <div>
+                <p className="font-semibold">{carePlan.title}</p>
+                {carePlan.diagnosis && (
+                  <p className="text-sm text-gray-500">{carePlan.diagnosis}</p>
+                )}
+              </div>
+              <PlanValue label="Care Goal" value={carePlan.care_goal} />
+              <PlanValue label="Medications" value={carePlan.medications} />
+              <PlanValue label="Instructions" value={carePlan.instructions} />
+              <p className="text-xs text-gray-500">
+                Active from {carePlan.start_date}
+                {carePlan.end_date ? ` through ${carePlan.end_date}` : ""}
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-500">No active care plan found.</p>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">
@@ -102,13 +127,24 @@ export default function VisitDetailsModal({
             Close
           </Button>
 
-          <Button
-            onClick={onStartChecklist}
-          >
-            Start Care Checklist
-          </Button>
+          {(shift.status === "Pending" ||
+            shift.status === "Approved" ||
+            shift.status === "In Progress") && (
+            <Button onClick={onStartChecklist}>
+              Start Care Checklist
+            </Button>
+          )}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function PlanValue({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-gray-600">{label}</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm">{value || "Not provided"}</p>
+    </div>
   );
 }

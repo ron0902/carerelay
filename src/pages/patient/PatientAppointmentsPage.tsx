@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 
 import { Button, Card, EmptyState } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
+import { getPatientAppointments } from "../../services/appointmentService";
+import PatientVisitReportModal from "../../components/patient/PatientVisitReportModal";
 
 interface PatientAppointment {
   id: number;
@@ -15,41 +18,52 @@ interface PatientAppointment {
   service: string;
   caregiver: string;
   location: string;
-  status: "Scheduled" | "Completed" | "Cancelled";
+  status: "Pending" | "Approved" | "In Progress" | "Completed" | "Cancelled" | "Rejected";
+  notes: string | null;
 }
 
 export default function PatientAppointmentsPage() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState("All");
+  const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<PatientAppointment | null>(null);
 
-  const appointments: PatientAppointment[] = [
-    {
-      id: 1,
-      date: "August 01, 2026",
-      time: "9:00 AM - 12:00 PM",
-      service: "Home Care Visit",
-      caregiver: "John Reyes",
-      location: "General Santos City",
-      status: "Scheduled",
-    },
-    {
-      id: 2,
-      date: "August 05, 2026",
-      time: "10:00 AM - 11:00 AM",
-      service: "Medical Checkup",
-      caregiver: "Maria Cruz",
-      location: "General Santos City",
-      status: "Scheduled",
-    },
-    {
-      id: 3,
-      date: "July 25, 2026",
-      time: "8:00 AM - 11:00 AM",
-      service: "Home Care Visit",
-      caregiver: "John Reyes",
-      location: "General Santos City",
-      status: "Completed",
-    },
-  ];
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadAppointments = async () => {
+      try {
+        setLoading(true);
+        const response = await getPatientAppointments(user.id);
+        if (!response.success) {
+          setAppointments([]);
+          return;
+        }
+
+        setAppointments(
+          (response.appointments || []).map((item: any) => ({
+            id: Number(item.id),
+            date: item.appointment_date ?? "",
+            time: item.appointment_time ?? "",
+            service: item.appointment_type ?? "Care Visit",
+            caregiver: item.caregiver_name ?? "Not assigned",
+            location: item.location ?? item.organization_name ?? "Not specified",
+            status: item.status || "Pending",
+            notes: item.notes ?? null,
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load patient appointments:", error);
+        setAppointments([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAppointments();
+  }, [user?.id]);
 
   const filteredAppointments = appointments.filter(
     (appointment) =>
@@ -60,8 +74,14 @@ export default function PatientAppointmentsPage() {
     status: PatientAppointment["status"]
   ) => {
     switch (status) {
-      case "Scheduled":
+      case "Pending":
+        return "bg-yellow-100 text-yellow-700";
+
+      case "Approved":
         return "bg-blue-100 text-blue-700";
+
+      case "In Progress":
+        return "bg-indigo-100 text-indigo-700";
 
       case "Completed":
         return "bg-green-100 text-green-700";
@@ -92,7 +112,9 @@ export default function PatientAppointmentsPage() {
         <div className="flex flex-wrap gap-2">
           {[
             "All",
-            "Scheduled",
+            "Pending",
+            "Approved",
+            "In Progress",
             "Completed",
             "Cancelled",
           ].map((option) => (
@@ -113,7 +135,11 @@ export default function PatientAppointmentsPage() {
       </Card>
 
       {/* Appointment List */}
-      {filteredAppointments.length === 0 ? (
+      {loading ? (
+        <Card>
+          <p className="text-gray-500">Loading appointments...</p>
+        </Card>
+      ) : filteredAppointments.length === 0 ? (
         <Card>
           <EmptyState
             title="No appointments found"
@@ -199,7 +225,10 @@ export default function PatientAppointmentsPage() {
 
                 {/* Action */}
                 <div className="shrink-0 lg:ml-4">
-                  <Button variant="secondary">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setSelectedAppointment(appointment)}
+                  >
                     View Details
                   </Button>
                 </div>
@@ -208,6 +237,12 @@ export default function PatientAppointmentsPage() {
           ))}
         </div>
       )}
+
+      <PatientVisitReportModal
+        open={selectedAppointment !== null}
+        notes={selectedAppointment?.notes ?? null}
+        onClose={() => setSelectedAppointment(null)}
+      />
     </div>
   );
 }

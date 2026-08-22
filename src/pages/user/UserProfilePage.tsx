@@ -11,21 +11,30 @@ import {
 import EditProfileModal, {
   type UserProfile,
 } from "../../components/user/EditProfileModal";
+import ChangePasswordModal from "../../components/user/ChangePasswordModal";
 import { useAuth } from "../../context/AuthContext";
-import { getCaregiverProfile } from "../../services/caregiverService";
+import {
+  changeCaregiverPassword,
+  getCaregiverProfile,
+  updateCaregiverProfile,
+} from "../../services/caregiverService";
 
 export default function UserProfilePage() {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
-    age: 0,
-    gender: "Not specified",
+    license_number: "",
+    specialization: "",
+    experience_years: 0,
+    bio: "",
     status: "Active",
   });
   const [loading, setLoading] = useState(true);
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openChangePassword, setOpenChangePassword] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -46,14 +55,16 @@ export default function UserProfilePage() {
       }
 
       const profile = response.profile ?? {};
-      const fullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
 
       setUserProfile({
-        name: fullName || "Caregiver",
+        first_name: profile.first_name ?? "",
+        last_name: profile.last_name ?? "",
         email: profile.email ?? "",
         phone: profile.phone ?? "",
-        age: Number(profile.experience_years ?? 0),
-        gender: profile.availability ?? "Not specified",
+        license_number: profile.license_number ?? "",
+        specialization: profile.specialization ?? "",
+        experience_years: Number(profile.experience_years ?? 0),
+        bio: profile.bio ?? "",
         status: profile.status ?? "Active",
       });
     } catch (error) {
@@ -63,12 +74,63 @@ export default function UserProfilePage() {
     }
   };
 
-  const handleSaveProfile = (updatedUser: UserProfile) => {
-    setUserProfile(updatedUser);
+  const handleSaveProfile = async (updatedUser: UserProfile) => {
+    if (!user?.id) {
+      throw new Error("Authenticated user ID is unavailable.");
+    }
+
+    const response = await updateCaregiverProfile(user.id, {
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      license_number: updatedUser.license_number,
+      specialization: updatedUser.specialization,
+      experience_years: updatedUser.experience_years,
+      bio: updatedUser.bio,
+    });
+
+    if (!response.success) {
+      throw new Error(response.message || "Unable to update caregiver profile.");
+    }
+
+    await loadProfile();
+  };
+
+  const handleChangePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ) => {
+    if (!user?.id) {
+      throw new Error("Authenticated user ID is unavailable.");
+    }
+
+    try {
+      const response = await changeCaregiverPassword(
+        user.id,
+        currentPassword,
+        newPassword
+      );
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to change password.");
+      }
+    } catch (error) {
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        "Failed to change password.";
+
+      throw new Error(message);
+    }
   };
 
   const infoRows = [
-    { label: "Full Name", value: userProfile.name || "Not available", icon: <User size={18} /> },
+    { label: "Full Name", value: `${userProfile.first_name} ${userProfile.last_name}`.trim() || "Not available", icon: <User size={18} /> },
     { label: "Email", value: userProfile.email || "Not available", icon: <Mail size={18} /> },
     { label: "Phone", value: userProfile.phone || "Not available", icon: <Phone size={18} /> },
     { label: "Account Status", value: userProfile.status || "Active", icon: <ShieldCheck size={18} /> },
@@ -76,9 +138,10 @@ export default function UserProfilePage() {
 
   const professionalRows = [
     { label: "Role", value: "Caregiver", icon: <Briefcase size={18} /> },
-    { label: "Specialization", value: userProfile.gender || "Not set", icon: <ShieldCheck size={18} /> },
-    { label: "Experience", value: userProfile.age ? `${userProfile.age} Years` : "Not set", icon: <Briefcase size={18} /> },
-    { label: "Availability", value: userProfile.gender || "Not set", icon: <ShieldCheck size={18} /> },
+    { label: "Specialization", value: userProfile.specialization || "Not set", icon: <ShieldCheck size={18} /> },
+    { label: "Experience", value: userProfile.experience_years ? `${userProfile.experience_years} Years` : "Not set", icon: <Briefcase size={18} /> },
+    { label: "License Number", value: userProfile.license_number || "Not set", icon: <ShieldCheck size={18} /> },
+    { label: "Bio", value: userProfile.bio || "Not set", icon: <User size={18} /> },
   ];
 
   return (
@@ -164,7 +227,12 @@ export default function UserProfilePage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary">Change Password</Button>
+              <Button
+                variant="secondary"
+                onClick={() => setOpenChangePassword(true)}
+              >
+                Change Password
+              </Button>
               <Button variant="secondary">Logout</Button>
             </div>
           </Card>
@@ -174,6 +242,12 @@ export default function UserProfilePage() {
             user={userProfile}
             onClose={() => setOpenEditModal(false)}
             onSave={handleSaveProfile}
+          />
+
+          <ChangePasswordModal
+            open={openChangePassword}
+            onClose={() => setOpenChangePassword(false)}
+            onSave={handleChangePassword}
           />
         </>
       )}

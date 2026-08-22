@@ -1,12 +1,15 @@
 <?php
+require_once __DIR__ . "/../../config/cors.php";
+require_once __DIR__ . "/../../config/database.php";
+
 header("Content-Type: application/json");
 
-require_once "../../config/cors.php";
-require_once "../../config/database.php";
-
 try {
-    $input = json_decode(file_get_contents("php://input"), true);
-    $userId = $input["user_id"] ?? null;
+    $database = new Database();
+    $db = $database->connect();
+
+    $input = json_decode(file_get_contents("php://input"), true) ?? [];
+    $userId = $input["user_id"] ?? $_GET["user_id"] ?? null;
 
     if (!$userId) {
         http_response_code(400);
@@ -39,15 +42,15 @@ try {
 
     $caregiverId = $caregiverRow["id"];
 
-    /*
-     * Today's shifts
-     */
+        /*
+         * Today's shifts
+         */
     $todayStmt = $db->prepare("
         SELECT COUNT(*) AS total
-        FROM appointments
-        WHERE caregiver_id = ?
-          AND DATE(appointment_date) = CURDATE()
-          AND status = 'Scheduled'
+                FROM assignments
+                WHERE caregiver_id = ?
+                    AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
+                    AND status = 'Active'
     ");
     $todayStmt->execute([$caregiverId]);
     $todaysShifts = (int) (
@@ -56,15 +59,15 @@ try {
         )["total"] ?? 0
     );
 
-    /*
-     * Upcoming visits
-     */
+        /*
+         * Upcoming visits
+         */
     $upcomingStmt = $db->prepare("
         SELECT COUNT(*) AS total
-        FROM appointments
+                FROM assignments
         WHERE caregiver_id = ?
-          AND appointment_date >= CURDATE()
-          AND status = 'Scheduled'
+                    AND DATE(start_date) > CURDATE()
+                    AND status = 'Active'
     ");
     $upcomingStmt->execute([$caregiverId]);
     $upcomingVisits = (int) (
@@ -74,11 +77,27 @@ try {
     );
 
     /*
+     * Pending offers
+     */
+    $pendingStmt = $db->prepare("
+        SELECT COUNT(*) AS total
+        FROM assignments
+        WHERE caregiver_id = ?
+          AND status = 'Pending'
+    ");
+    $pendingStmt->execute([$caregiverId]);
+    $pendingOffers = (int) (
+        $pendingStmt->fetch(
+            PDO::FETCH_ASSOC
+        )["total"] ?? 0
+    );
+
+    /*
      * Completed visits
      */
     $completedStmt = $db->prepare("
         SELECT COUNT(*) AS total
-        FROM appointments
+        FROM assignments
         WHERE caregiver_id = ?
           AND status = 'Completed'
     ");
@@ -98,6 +117,7 @@ try {
         "stats" => [
             "todaysShifts" => $todaysShifts,
             "upcomingVisits" => $upcomingVisits,
+            "pendingOffers" => $pendingOffers,
             "completedVisits" => $completedVisits
         ]
     ]);

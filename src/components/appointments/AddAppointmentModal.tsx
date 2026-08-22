@@ -40,11 +40,13 @@ export default function AddAppointmentModal({
     appointmentType: "Home Visit",
     reason: "",
     location: "",
-    status: "Scheduled" as
-      | "Scheduled"
+    status: "Pending" as
+      | "Pending"
+      | "Approved"
+      | "In Progress"
       | "Completed"
       | "Cancelled"
-      | "No Show",
+      | "Rejected",
     notes: "",
   });
 
@@ -93,7 +95,7 @@ export default function AddAppointmentModal({
           appointment.location ?? "",
 
         status:
-          appointment.status ?? "Scheduled",
+          appointment.status ?? "Pending",
 
         notes:
           appointment.notes ?? "",
@@ -109,7 +111,7 @@ export default function AddAppointmentModal({
         appointmentType: "Home Visit",
         reason: "",
         location: "",
-        status: "Scheduled",
+        status: "Pending",
         notes: "",
       });
     }
@@ -571,16 +573,20 @@ export default function AddAppointmentModal({
                 ...form,
                 status:
                   e.target.value as
-                    | "Scheduled"
+                    | "Pending"
+                    | "Approved"
+                    | "In Progress"
                     | "Completed"
                     | "Cancelled"
-                    | "No Show",
+                    | "Rejected",
               })
             }
           >
-            <option value="Scheduled">
-              Scheduled
-            </option>
+            <option value="Pending">Pending</option>
+
+            <option value="Approved">Approved</option>
+
+            <option value="In Progress">In Progress</option>
 
             <option value="Completed">
               Completed
@@ -590,9 +596,7 @@ export default function AddAppointmentModal({
               Cancelled
             </option>
 
-            <option value="No Show">
-              No Show
-            </option>
+            <option value="Rejected">Rejected</option>
           </select>
         </div>
 
