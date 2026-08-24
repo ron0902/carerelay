@@ -2,6 +2,7 @@
 
 require_once __DIR__ . "/../../config/cors.php";
 require_once __DIR__ . "/../../config/database.php";
+require_once __DIR__ . "/../organizations/_helpers.php";
 
 header("Content-Type: application/json");
 
@@ -9,6 +10,17 @@ try {
 
     $database = new Database();
     $db = $database->connect();
+
+    $requestUserId = (int) ($_GET["user_id"] ?? 0);
+    $requestedOrganizationId = isset($_GET["organization_id"])
+        ? (int) $_GET["organization_id"]
+        : null;
+    $organization = $requestUserId
+        ? findOrganizationForUser($db, $requestUserId, $requestedOrganizationId)
+        : null;
+    if ($requestUserId && !$organization) {
+        jsonError("You do not have access to this organization.", 403);
+    }
 
     $sql = "
         SELECT
@@ -67,10 +79,15 @@ try {
         LEFT JOIN organizations o
             ON a.organization_id = o.id
 
+        " . ($organization ? "WHERE a.organization_id = :organization_id" : "") . "
+
         ORDER BY a.id DESC
     ";
 
     $stmt = $db->prepare($sql);
+    if ($organization) {
+        $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
+    }
     $stmt->execute();
 
     $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);

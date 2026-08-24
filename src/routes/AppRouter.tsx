@@ -31,6 +31,8 @@ import NotificationsPage from "../pages/user/NotificationsPage";
 import AppointmentsPage from "../pages/appointments/AppointmentsPage";
 import ReportsPage from "../pages/reports/ReportsPage";
 import CarePlansPage from "../pages/carePlans/CarePlansPage";
+import OrganizationLayout from "../layouts/OrganizationLayout";
+import OrganizationPortalPage from "../pages/organization/OrganizationPortalPage";
 
 export default function AppRouter() {
  return (
@@ -94,6 +96,22 @@ export default function AppRouter() {
       <Route path="/patient/care-plan" element={<PatientCarePlanPage />} />
       <Route path="/patient/notifications" element={<PatientNotificationsPage />} />
       <Route path="/patient/profile" element={<PatientProfilePage />} />
+    </Route>
+
+    {/* Organization */}
+    <Route
+      element={
+        <ProtectedRoute allowedRoles={["Organization"]}>
+          <OrganizationLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route path="/organization/dashboard" element={<OrganizationPortalPage />} />
+      <Route path="/organization/members" element={<OrganizationPortalPage section="members" />} />
+      <Route path="/organization/patients" element={<PatientsPage />} />
+      <Route path="/organization/caregivers" element={<CaregiversPage />} />
+      <Route path="/organization/assignments" element={<AssignmentsPage />} />
+      <Route path="/organization/notifications" element={<OrganizationPortalPage section="notifications" />} />
     </Route>
 
     <Route path="/" element={<Navigate to="/login" replace />} />

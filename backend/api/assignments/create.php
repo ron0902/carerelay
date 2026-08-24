@@ -2,6 +2,7 @@
 
 require_once __DIR__ . "/../../config/cors.php";
 require_once __DIR__ . "/../../config/database.php";
+require_once __DIR__ . "/../organizations/_helpers.php";
 
 header("Content-Type: application/json");
 
@@ -26,6 +27,20 @@ try {
         echo json_encode([
             "success" => false,
             "message" => "Invalid JSON data."
+        ]);
+        exit;
+    }
+
+    $organization = findOrganizationForUser(
+        $db,
+        (int) ($data["assigned_by"] ?? 0),
+        (int) ($data["organization_id"] ?? 0)
+    );
+    if (!$organization) {
+        http_response_code(403);
+        echo json_encode([
+            "success" => false,
+            "message" => "The assigning user does not have access to this organization."
         ]);
         exit;
     }

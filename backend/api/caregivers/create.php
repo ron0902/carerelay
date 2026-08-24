@@ -11,6 +11,7 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 }
 
 require_once "../../config/database.php";
+require_once "../organizations/_helpers.php";
 
 $database = new Database();
 $conn = $database->connect();
@@ -26,6 +27,24 @@ if (!$data) {
         "message" => "No data received."
     ]);
     exit();
+}
+
+$organizationId = isset($data["organization_id"])
+    ? (int) $data["organization_id"]
+    : null;
+if (!$organizationId && !empty($data["created_by"])) {
+    $organization = findOrganizationForUser($conn, (int) $data["created_by"]);
+    $organizationId = $organization ? (int) $organization["id"] : null;
+}
+if ($organizationId) {
+    $organization = findOrganizationForUser(
+        $conn,
+        (int) ($data["created_by"] ?? 0),
+        $organizationId
+    );
+    if (!$organization) {
+        jsonError("You do not have access to this organization.", 403);
+    }
 }
 
 try {
@@ -119,6 +138,7 @@ try {
         INSERT INTO caregivers
         (
             user_id,
+            organization_id,
             license_number,
             specialization,
             experience_years,
@@ -127,11 +147,12 @@ try {
             bio
         )
         VALUES
-        (?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $caregiver->execute([
         $userId,
+        $organizationId,
         $data["license_number"] ?? "",
         $data["specialization"] ?? "",
         $data["experience_years"] ?? 0,

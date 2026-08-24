@@ -104,6 +104,45 @@ try {
         ]);
     }
 
+    $recipientStmt = $db->prepare("
+        SELECT DISTINCT recipient.user_id
+        FROM (
+            SELECT a.assigned_by AS user_id
+            FROM assignments a
+            WHERE a.id = ?
+            UNION
+            SELECT m.user_id
+            FROM assignments a
+            INNER JOIN organization_members m ON m.organization_id = a.organization_id
+            WHERE a.id = ? AND m.status = 'Active'
+            UNION
+            SELECT p.user_id
+            FROM assignments a
+            INNER JOIN patients p ON p.id = a.patient_id
+            WHERE a.id = ?
+        ) recipient
+    ");
+    $recipientStmt->execute([
+        $offer["assignment_id"],
+        $offer["assignment_id"],
+        $offer["assignment_id"]
+    ]);
+    $notificationStmt = $db->prepare(
+        "INSERT INTO notifications (user_id, title, message, type, is_read, reference_id)
+         VALUES (?, ?, ?, 'Assignment', 0, ?)"
+    );
+    while ($recipient = $recipientStmt->fetch(PDO::FETCH_ASSOC)) {
+        if ((int) $recipient["user_id"] === (int) $userId) {
+            continue;
+        }
+        $notificationStmt->execute([
+            $recipient["user_id"],
+            "Assignment {$status}",
+            "The caregiver has " . strtolower($status) . " the assignment offer.",
+            $offer["assignment_id"]
+        ]);
+    }
+
     $db->commit();
 
     echo json_encode([

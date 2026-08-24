@@ -11,16 +11,30 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 }
 
 require_once "../../config/database.php";
+require_once "../organizations/_helpers.php";
 
 $database = new Database();
 $conn = $database->connect();
 
 try {
 
+    $requestUserId = (int) ($_GET["user_id"] ?? 0);
+    $requestedOrganizationId = isset($_GET["organization_id"])
+        ? (int) $_GET["organization_id"]
+        : null;
+    $organization = $requestUserId
+        ? findOrganizationForUser($conn, $requestUserId, $requestedOrganizationId)
+        : null;
+
+    if ($requestUserId && !$organization) {
+        jsonError("You do not have access to this organization.", 403);
+    }
+
     $sql = "
         SELECT
             c.id,
             c.user_id,
+            c.organization_id,
 
             u.first_name,
             u.last_name,
@@ -46,10 +60,15 @@ try {
 
         WHERE u.role = 'Caregiver'
 
+        " . ($organization ? "AND c.organization_id = :organization_id" : "") . "
+
         ORDER BY c.id DESC
     ";
 
     $stmt = $conn->prepare($sql);
+    if ($organization) {
+        $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
+    }
     $stmt->execute();
 
     $caregivers = $stmt->fetchAll(PDO::FETCH_ASSOC);

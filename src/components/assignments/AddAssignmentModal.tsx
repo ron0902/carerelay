@@ -8,6 +8,8 @@ import { updateAssignment } from "../../services/assignmentService";
 import { getPatients } from "../../services/patientService";
 import { getCaregivers } from "../../services/caregiverService";
 import { getOrganizations } from "../../services/organizationService";
+import { getOrganizationMembers } from "../../services/organizationPortalService";
+import { useAuth } from "../../context/AuthContext";
 
 interface AddAssignmentModalProps {
   open: boolean;
@@ -37,6 +39,7 @@ export default function AddAssignmentModal({
   onSave,
   assignment,
 }: AddAssignmentModalProps) {
+  const { user } = useAuth();
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [caregivers, setCaregivers] = useState<CaregiverOption[]>([]);
   const [organizations, setOrganizations] = useState<
@@ -154,9 +157,11 @@ export default function AddAssignmentModal({
         caregiverResponse,
         organizationResponse,
       ] = await Promise.all([
-        getPatients(),
-        getCaregivers(),
-        getOrganizations(),
+        getPatients(user?.role === "Organization" ? user.id : undefined),
+        getCaregivers(user?.role === "Organization" ? user.id : undefined),
+        user?.role === "Organization"
+          ? getOrganizationMembers(user.id)
+          : getOrganizations(),
       ]);
 
       if (patientResponse.success) {
@@ -191,7 +196,7 @@ export default function AddAssignmentModal({
 
       if (organizationResponse.success) {
         setOrganizations(
-          (organizationResponse.organizations || []).map(
+          (organizationResponse.organizations || (organizationResponse.organization ? [organizationResponse.organization] : [])).map(
             (organization: any) => ({
               id: Number(organization.id),
 
@@ -298,7 +303,7 @@ export default function AddAssignmentModal({
       // TODO:
       // Replace with the actual logged-in
       // admin user ID from your auth/session.
-      assigned_by: 1,
+      assigned_by: Number(user?.id ?? 1),
 
       assigned_date:
         form.assignedDate,

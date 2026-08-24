@@ -11,8 +11,10 @@ import ViewPatientModal from "../../components/patients/ViewPatientModal";
 import AddPatientModal from "../../components/patients/AddPatientModal";
 
 import type { Patient } from "../../types/patient";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PatientsPage() {
+  const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,13 +38,15 @@ export default function PatientsPage() {
 
   useEffect(() => {
     loadPatients();
-  }, []);
+  }, [user]);
 
   const loadPatients = async () => {
     try {
       setLoading(true);
 
-      const response = await getPatients();
+      const response = await getPatients(
+        user?.role === "Organization" ? user.id : undefined
+      );
 
       if (!response.success) {
         console.error(response.message);

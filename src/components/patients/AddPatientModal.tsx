@@ -5,6 +5,7 @@ import {
   createPatient,
   updatePatient,
 } from "../../services/patientService";
+import { useAuth } from "../../context/AuthContext";
 
 interface AddPatientModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export default function AddPatientModal({
   onSave,
   patient,
 }: AddPatientModalProps) {
+  const { user } = useAuth();
   const [form, setForm] = useState<PatientForm>({
     firstName: "",
     lastName: "",
@@ -153,6 +155,7 @@ export default function AddPatientModal({
     if (hasError) return;
 
     const payload = {
+      created_by: user?.id,
       first_name: form.firstName.trim(),
       last_name: form.lastName.trim(),
 

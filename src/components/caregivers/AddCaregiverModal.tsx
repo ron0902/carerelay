@@ -5,6 +5,7 @@ import {
   createCaregiver,
   updateCaregiver,
 } from "../../services/caregiverService";
+import { useAuth } from "../../context/AuthContext";
 
 interface AddCaregiverModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export default function AddCaregiverModal({
   onSave,
   caregiver,
 }: AddCaregiverModalProps) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -132,6 +134,7 @@ export default function AddCaregiverModal({
       hourly_rate: Number(form.hourlyRate) || 0,
 
       bio: form.bio.trim(),
+      created_by: user?.id,
     };
 
     try {

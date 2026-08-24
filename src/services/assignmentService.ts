@@ -1,7 +1,9 @@
 import api from "./api";
 
-export const getAssignments = async () => {
-  const response = await api.get("/assignments/getAll.php");
+export const getAssignments = async (userId?: string | number) => {
+  const response = await api.get("/assignments/getAll.php", {
+    ...(userId ? { params: { user_id: userId } } : {}),
+  });
   return response.data;
 };
 

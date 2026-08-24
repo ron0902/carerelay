@@ -1,9 +1,9 @@
 import api from "./api";
 
-export const getCaregivers = async () => {
-  const response = await api.get(
-    "/caregivers/getAll.php"
-  );
+export const getCaregivers = async (userId?: string | number) => {
+  const response = await api.get("/caregivers/getAll.php", {
+    ...(userId ? { params: { user_id: userId } } : {}),
+  });
 
   return response.data;
 };

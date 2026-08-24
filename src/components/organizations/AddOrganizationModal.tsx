@@ -150,6 +150,12 @@ export default function AddOrganizationModal({
         return;
       }
 
+      if (!organization && response.temporary_password) {
+        alert(
+          `Organization account created.\n\nLogin email: ${form.email.trim()}\nTemporary password: ${response.temporary_password}`
+        );
+      }
+
       // =========================
       // FRONTEND OBJECT
       // =========================

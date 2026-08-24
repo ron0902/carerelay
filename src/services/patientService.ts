@@ -1,7 +1,9 @@
 import api from "./api";
 
-export const getPatients = async () => {
-  const response = await api.get("/patients/getAll.php");
+export const getPatients = async (userId?: string | number) => {
+  const response = await api.get("/patients/getAll.php", {
+    ...(userId ? { params: { user_id: userId } } : {}),
+  });
   return response.data;
 };
 

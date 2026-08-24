@@ -14,8 +14,10 @@ import {
   deleteAssignment,
   updateAssignment,
 } from "../../services/assignmentService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AssignmentsPage() {
+  const { user } = useAuth();
   const [assignments, setAssignments] = useState<CareAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,13 +45,15 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     loadAssignments();
-  }, []);
+  }, [user]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
 
-      const response = await getAssignments();
+      const response = await getAssignments(
+        user?.role === "Organization" ? user.id : undefined
+      );
 
       console.log("ASSIGNMENTS RESPONSE:", response);
 

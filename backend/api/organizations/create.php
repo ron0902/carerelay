@@ -30,6 +30,28 @@ try {
         exit;
     }
 
+    $db->beginTransaction();
+    $ownerUserId = (int) ($data["user_id"] ?? 0);
+    $createdPortalAccount = false;
+
+    if (!$ownerUserId) {
+        if (empty($data["email"])) {
+            throw new Exception("An organization email is required to create its portal account.");
+        }
+
+        $userStmt = $db->prepare("INSERT INTO users (first_name, last_name, email, password, role, phone, status) VALUES (?, ?, ?, ?, 'Organization', ?, ?)");
+        $userStmt->execute([
+            trim($data["contact_person"] ?? $data["organization_name"] ?? "Organization"),
+            "",
+            trim($data["email"]),
+            password_hash("changeme123", PASSWORD_DEFAULT),
+            $data["phone"] ?? "",
+            $data["status"] ?? "Active"
+        ]);
+        $ownerUserId = (int) $db->lastInsertId();
+        $createdPortalAccount = true;
+    }
+
     $sql = "INSERT INTO organizations (
                 user_id,
                 organization_name,
@@ -61,7 +83,7 @@ try {
     $stmt = $db->prepare($sql);
 
     $stmt->execute([
-        ":user_id" => $data["user_id"] ?? 1,
+        ":user_id" => $ownerUserId,
         ":organization_name" => $data["organization_name"] ?? "",
         ":contact_person" => $data["contact_person"] ?? "",
         ":phone" => $data["phone"] ?? "",
@@ -75,15 +97,25 @@ try {
         ":status" => $data["status"] ?? "Active"
     ]);
 
+    $organizationId = (int) $db->lastInsertId();
+    $memberStmt = $db->prepare("INSERT INTO organization_members (organization_id, user_id, member_role, status) VALUES (?, ?, 'Owner', 'Active')");
+    $memberStmt->execute([$organizationId, $ownerUserId]);
+    $db->commit();
+
     echo json_encode([
         "success" => true,
         "message" => "Organization created successfully.",
         "organization" => [
-            "id" => $db->lastInsertId()
-        ]
+            "id" => $organizationId
+        ],
+        "temporary_password" => $createdPortalAccount ? "changeme123" : null
     ]);
 
 } catch (PDOException $e) {
+
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
 
     http_response_code(500);
 
@@ -97,6 +129,10 @@ try {
     exit;
 
 } catch (Exception $e) {
+
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
 
     echo json_encode([
         "success" => false,

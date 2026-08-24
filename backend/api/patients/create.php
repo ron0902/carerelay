@@ -1,6 +1,7 @@
 <?php
 
 header("Content-Type: application/json");
+require_once "../organizations/_helpers.php";
 header("Access-Control-Allow-Origin: http://localhost:5173");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
@@ -8,6 +9,24 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
+}
+
+$organizationId = isset($data["organization_id"])
+    ? (int) $data["organization_id"]
+    : null;
+if (!$organizationId && !empty($data["created_by"])) {
+    $organization = findOrganizationForUser($conn, (int) $data["created_by"]);
+    $organizationId = $organization ? (int) $organization["id"] : null;
+}
+if ($organizationId) {
+    $organization = findOrganizationForUser(
+        $conn,
+        (int) ($data["created_by"] ?? 0),
+        $organizationId
+    );
+    if (!$organization) {
+        jsonError("You do not have access to this organization.", 403);
+    }
 }
 
 require_once "../../config/database.php";
@@ -76,6 +95,7 @@ try {
         INSERT INTO patients
         (
             user_id,
+            organization_id,
             date_of_birth,
             gender,
             blood_type,
@@ -86,12 +106,13 @@ try {
         )
         VALUES
         (
-            ?,?,?,?,?,?,?,?
+            ?,?,?,?,?,?,?,?,?
         )
     ");
 
     $patient->execute([
         $userId,
+        $organizationId,
         $data["date_of_birth"],
         $data["gender"],
         $data["blood_type"],

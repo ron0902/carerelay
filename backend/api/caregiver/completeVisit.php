@@ -110,6 +110,26 @@ try {
         ]);
     }
 
+    $organizationStmt = $db->prepare(
+        "SELECT DISTINCT m.user_id
+         FROM appointments a
+         INNER JOIN organization_members m ON m.organization_id = a.organization_id
+         WHERE a.id = ? AND m.status = 'Active'"
+    );
+    $organizationStmt->execute([$appointmentId]);
+    $organizationNotificationStmt = $db->prepare(
+        "INSERT INTO notifications (user_id, title, message, type, is_read, reference_id)
+         VALUES (?, ?, ?, 'Appointment', 0, ?)"
+    );
+    while ($member = $organizationStmt->fetch(PDO::FETCH_ASSOC)) {
+        $organizationNotificationStmt->execute([
+            $member["user_id"],
+            "Visit completed",
+            "A caregiver completed an appointment for your organization.",
+            $appointmentId
+        ]);
+    }
+
     $db->commit();
 
     echo json_encode([

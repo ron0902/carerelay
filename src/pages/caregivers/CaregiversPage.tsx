@@ -11,8 +11,10 @@ import AddCaregiverModal from "../../components/caregivers/AddCaregiverModal";
 import DeleteCaregiverModal from "../../components/caregivers/DeleteCaregiverModal";
 import ViewCaregiverModal from"../../components/caregivers/ViewCaregiverModal";
 import CaregiverToolbar from "../../components/caregivers/CaregiverToolbar";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CaregiversPage() {
+  const { user } = useAuth();
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,13 +42,15 @@ export default function CaregiversPage() {
    */
   useEffect(() => {
     loadCaregivers();
-  }, []);
+  }, [user]);
 
   const loadCaregivers = async () => {
     try {
       setLoading(true);
 
-      const response = await getCaregivers();
+      const response = await getCaregivers(
+        user?.role === "Organization" ? user.id : undefined
+      );
 
       if (!response.success) {
         console.error(response.message);

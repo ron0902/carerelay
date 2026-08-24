@@ -25,6 +25,8 @@ export default function ProtectedRoute({
           ? "/user/dashboard"
           : user.role === "Patient"
             ? "/patient/dashboard"
+            : user.role === "Organization"
+              ? "/organization/dashboard"
             : "/login";
 
     return <Navigate to={destination} replace />;
