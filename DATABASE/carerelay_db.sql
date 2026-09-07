@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 20, 2026 at 06:33 PM
+-- Generation Time: Sep 07, 2026 at 04:17 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,13 +44,6 @@ CREATE TABLE `appointments` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `appointments`
---
-
-INSERT INTO `appointments` (`id`, `patient_id`, `caregiver_id`, `organization_id`, `appointment_date`, `appointment_time`, `duration`, `appointment_type`, `reason`, `location`, `status`, `notes`, `created_at`, `updated_at`) VALUES
-(14, 3, 4, 16, '2026-08-22', '15:04:00', 60, 'Home Visit', '23123', '21312', 'Approved', '1321321321', '2026-08-20 16:00:23', '2026-08-20 16:28:09');
-
 -- --------------------------------------------------------
 
 --
@@ -73,13 +66,6 @@ CREATE TABLE `assignments` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `assignments`
---
-
-INSERT INTO `assignments` (`id`, `patient_id`, `caregiver_id`, `organization_id`, `assigned_by`, `assigned_date`, `start_date`, `end_date`, `shift`, `status`, `remarks`, `created_at`, `updated_at`) VALUES
-(3, 3, 4, 16, 1, '2026-08-17', '2026-03-13', '2026-08-28', 'Morning', 'Active', '1eqwewqewqewqe', '2026-08-17 16:35:15', '2026-08-17 16:35:15');
-
 -- --------------------------------------------------------
 
 --
@@ -89,6 +75,7 @@ INSERT INTO `assignments` (`id`, `patient_id`, `caregiver_id`, `organization_id`
 CREATE TABLE `caregivers` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `organization_id` int(11) DEFAULT NULL,
   `license_number` varchar(100) DEFAULT NULL,
   `specialization` varchar(150) DEFAULT NULL,
   `experience_years` int(11) DEFAULT 0,
@@ -103,8 +90,9 @@ CREATE TABLE `caregivers` (
 -- Dumping data for table `caregivers`
 --
 
-INSERT INTO `caregivers` (`id`, `user_id`, `license_number`, `specialization`, `experience_years`, `availability`, `hourly_rate`, `bio`, `created_at`, `updated_at`) VALUES
-(4, 9, '213123213213', '', 0, 'Available', 45.00, '21312321', '2026-08-17 16:23:04', '2026-08-17 16:23:04');
+INSERT INTO `caregivers` (`id`, `user_id`, `organization_id`, `license_number`, `specialization`, `experience_years`, `availability`, `hourly_rate`, `bio`, `created_at`, `updated_at`) VALUES
+(4, 9, NULL, '213123213213', '', 0, 'Available', 45.00, '21312321', '2026-08-17 16:23:04', '2026-08-17 16:23:04'),
+(5, 12, 18, '123123123123', '', 3, 'Available', 21.00, '123123123', '2026-08-25 19:58:20', '2026-08-25 19:58:20');
 
 -- --------------------------------------------------------
 
@@ -171,6 +159,7 @@ CREATE TABLE `notifications` (
 
 CREATE TABLE `organizations` (
   `id` int(11) NOT NULL,
+  `organization_code` varchar(30) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `organization_name` varchar(200) NOT NULL,
   `contact_person` varchar(150) DEFAULT NULL,
@@ -191,8 +180,34 @@ CREATE TABLE `organizations` (
 -- Dumping data for table `organizations`
 --
 
-INSERT INTO `organizations` (`id`, `user_id`, `organization_name`, `contact_person`, `phone`, `email`, `address`, `city`, `province`, `postal_code`, `description`, `website`, `status`, `created_at`, `updated_at`) VALUES
-(16, 1, 'rontzy09213', '3213213', '21321321', '3213213213', '21321321', '', '', '', '3421341e213423', '', 'Active', '2026-08-17 16:34:43', '2026-08-17 16:34:51');
+INSERT INTO `organizations` (`id`, `organization_code`, `user_id`, `organization_name`, `contact_person`, `phone`, `email`, `address`, `city`, `province`, `postal_code`, `description`, `website`, `status`, `created_at`, `updated_at`) VALUES
+(18, 'MMC', 11, 'MMC', 'Ron', '09756158141', 'admin@gmail.com', 'Gensan', '', '', '', 'Hospital', '', 'Active', '2026-08-24 17:15:50', '2026-08-25 20:33:28'),
+(19, 'GSH', 14, 'General Santos Hospital', 'Ron', '312312312312312', 'ron2@gmail.com', 'Gensan', '', '', '', 'Hospital', '', 'Active', '2026-08-27 15:05:45', '2026-08-27 15:05:45');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `organization_members`
+--
+
+CREATE TABLE `organization_members` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `member_role` enum('Owner','Admin','System Admin','Medical Director','Nursing Director','Executive Assistant','Office Admin','Nurse','Caregiver','Patient','Member','Vendor','Contact') NOT NULL DEFAULT 'Member',
+  `status` enum('Active','Inactive','Invited') NOT NULL DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `organization_members`
+--
+
+INSERT INTO `organization_members` (`id`, `organization_id`, `user_id`, `member_role`, `status`, `created_at`, `updated_at`) VALUES
+(4, 18, 11, 'Owner', 'Active', '2026-08-24 17:15:50', '2026-08-24 17:15:50'),
+(5, 18, 12, 'Caregiver', 'Active', '2026-08-25 19:58:20', '2026-08-25 19:58:20'),
+(6, 19, 14, 'Owner', 'Active', '2026-08-27 15:05:45', '2026-08-27 15:05:45');
 
 -- --------------------------------------------------------
 
@@ -235,8 +250,8 @@ CREATE TABLE `patients` (
 -- Dumping data for table `patients`
 --
 
-INSERT INTO `patients` (`id`, `user_id`, `date_of_birth`, `gender`, `blood_type`, `address`, `emergency_contact_name`, `emergency_contact_phone`, `medical_notes`, `created_at`, `updated_at`) VALUES
-(3, 6, '2001-09-02', 'Male', 'O+', 'gensan', 'shanti dope', '12312321312321', 'adasdasdsadasdsad', '2026-08-12 15:35:14', '2026-08-12 15:35:14');
+INSERT INTO `patients` (`id`, `user_id`, `organization_id`, `date_of_birth`, `gender`, `blood_type`, `address`, `emergency_contact_name`, `emergency_contact_phone`, `medical_notes`, `medical_notes_public`, `created_at`, `updated_at`) VALUES
+(5, 15, NULL, '2001-09-02', 'Male', 'O+', 'Gensan', 'ronoliver', '3123412312321', '', 0, '2026-09-03 16:52:02', '2026-09-03 17:01:55');
 
 -- --------------------------------------------------------
 
@@ -255,13 +270,6 @@ CREATE TABLE `shift_offers` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `shift_offers`
---
-
-INSERT INTO `shift_offers` (`id`, `assignment_id`, `caregiver_id`, `offered_by`, `status`, `offered_at`, `responded_at`, `created_at`, `updated_at`) VALUES
-(1, 3, 4, 1, 'Accepted', '2026-08-20 14:28:06', '2026-08-20 14:50:03', '2026-08-20 14:28:06', '2026-08-20 14:50:03');
 
 -- --------------------------------------------------------
 
@@ -289,10 +297,13 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `password`, `role`, `phone`, `profile_picture`, `status`, `created_at`, `updated_at`) VALUES
 (1, '3213213', '', 'admin@carerelay.com', '$2y$10$cB3QsxlVwXsj1ysHJwDVfORaA9uXr6GiPjNblmVsx1ZtOv6CQS2eK', 'Admin', '21321321', NULL, 'Active', '2026-08-11 14:47:15', '2026-08-18 15:31:28'),
-(6, 'ron', 'saladero', 'ronoliver092@gmail.com', '$2y$10$qz9ezuLTGf6NzfFiVYmR3.gE4AQHEpORozKI9q5nUL6bQCZPmPpQa', 'Patient', '321312312312', NULL, 'Active', '2026-08-12 15:35:14', '2026-08-12 15:35:14'),
 (7, 'ramon', '', 'ramon@gmail.com', '$2y$10$QN.OBPPgYmoQjohFkb4S/.KNl3GLgfFsG5rhAxhO.IfC3V.ylp5YC', 'Caregiver', '12312312312312', NULL, 'Inactive', '2026-08-12 15:35:54', '2026-08-17 16:22:24'),
-(8, 'ron', '', 'ron@gmail.com', '$2y$10$0cQCG86DC/5YVDI8TopuReCwRmG6iQusP7hvkEyqnA5nm.787ExZK', 'Caregiver', '0992323', NULL, 'Inactive', '2026-08-17 14:50:46', '2026-08-17 16:22:22'),
-(9, 'ron', 'saladero', 'rontzy0902@gmail.com', '$2y$10$NU8JbAtaVo5E9CSIg0wrHucz3RGSoKbmsgAH.JKoacjd87d/BccSC', 'Caregiver', '09321321321', NULL, 'Active', '2026-08-17 16:23:04', '2026-08-19 14:37:31');
+(8, 'ron', '', 'ron@gmail.com', '$2y$10$0cQCG86DC/5YVDI8TopuReCwRmG6iQusP7hvkEyqnA5nm.787ExZK', 'Caregiver', '0992323', NULL, 'Active', '2026-08-17 14:50:46', '2026-09-03 16:49:46'),
+(9, 'ron', 'saladero', 'rontzy0902@gmail.com', '$2y$10$NU8JbAtaVo5E9CSIg0wrHucz3RGSoKbmsgAH.JKoacjd87d/BccSC', 'Caregiver', '09321321321', NULL, 'Active', '2026-08-17 16:23:04', '2026-08-24 16:08:02'),
+(11, 'Ron', '', 'admin@gmail.com', '$2y$10$8coHR4ATEMLBrvtGeiDx5uXC1q.jPSwZNzVAa0MyKDyV/cm6ocRkC', 'Organization', '09756158141', NULL, 'Active', '2026-08-24 17:15:50', '2026-08-24 17:15:50'),
+(12, 'Ron', 'Oliver', 'ron09@gmail.com', '$2y$10$CXQX4Bi03SlJaaFyyYruwOdwf2VEm8x6PET7qY9kR8Av1hWqAXNSG', 'Caregiver', '090920092', NULL, 'Inactive', '2026-08-25 19:58:20', '2026-09-03 16:56:21'),
+(14, 'Ron', '', 'ron2@gmail.com', '$2y$10$tpQkoztxPAdOqwbGKfTO2.1qqVu2.h9mJ4ISQDfgRZlzgN5tnbNH2', 'Organization', '312312312312312', NULL, 'Active', '2026-08-27 15:05:45', '2026-08-27 15:05:45'),
+(15, 'Ron', 'Oliver Saladero', 'rons09@gmail.com', '$2y$10$tdLw8KJ1H6.jzGTtkp6uoOuRGVqC0Qwdnyr8sd24cVlIQykgCaXRC', 'Patient', '213212131', NULL, 'Active', '2026-09-03 16:52:02', '2026-09-03 17:01:53');
 
 --
 -- Indexes for dumped tables
@@ -323,7 +334,8 @@ ALTER TABLE `assignments`
 ALTER TABLE `caregivers`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `license_number` (`license_number`),
-  ADD KEY `fk_caregiver_user` (`user_id`);
+  ADD KEY `fk_caregiver_user` (`user_id`),
+  ADD KEY `idx_caregiver_organization` (`organization_id`);
 
 --
 -- Indexes for table `caregiver_availability`
@@ -353,7 +365,16 @@ ALTER TABLE `notifications`
 --
 ALTER TABLE `organizations`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_organization_code` (`organization_code`),
   ADD KEY `fk_organization_user` (`user_id`);
+
+--
+-- Indexes for table `organization_members`
+--
+ALTER TABLE `organization_members`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_organization_member` (`organization_id`,`user_id`),
+  ADD KEY `idx_member_user` (`user_id`);
 
 --
 -- Indexes for table `password_resets`
@@ -367,7 +388,8 @@ ALTER TABLE `password_resets`
 --
 ALTER TABLE `patients`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_patient_user` (`user_id`);
+  ADD KEY `fk_patient_user` (`user_id`),
+  ADD KEY `idx_patient_organization` (`organization_id`);
 
 --
 -- Indexes for table `shift_offers`
@@ -393,19 +415,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `appointments`
 --
 ALTER TABLE `appointments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `caregivers`
 --
 ALTER TABLE `caregivers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `caregiver_availability`
@@ -417,19 +439,25 @@ ALTER TABLE `caregiver_availability`
 -- AUTO_INCREMENT for table `care_plans`
 --
 ALTER TABLE `care_plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `organizations`
 --
 ALTER TABLE `organizations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT for table `organization_members`
+--
+ALTER TABLE `organization_members`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `password_resets`
@@ -441,7 +469,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `patients`
 --
 ALTER TABLE `patients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `shift_offers`
@@ -453,7 +481,7 @@ ALTER TABLE `shift_offers`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Constraints for dumped tables
@@ -480,6 +508,7 @@ ALTER TABLE `assignments`
 -- Constraints for table `caregivers`
 --
 ALTER TABLE `caregivers`
+  ADD CONSTRAINT `fk_caregiver_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_caregiver_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
@@ -509,6 +538,13 @@ ALTER TABLE `organizations`
   ADD CONSTRAINT `fk_organization_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `organization_members`
+--
+ALTER TABLE `organization_members`
+  ADD CONSTRAINT `fk_member_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_member_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `password_resets`
 --
 ALTER TABLE `password_resets`
@@ -518,6 +554,7 @@ ALTER TABLE `password_resets`
 -- Constraints for table `patients`
 --
 ALTER TABLE `patients`
+  ADD CONSTRAINT `fk_patient_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_patient_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
