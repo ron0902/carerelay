@@ -5,6 +5,37 @@ require_once __DIR__ . "/../../config/database.php";
 
 header("Content-Type: application/json");
 
+function createOrganizationCode(PDO $db, string $organizationName): string
+{
+    $words = preg_split('/\s+/', strtoupper(trim($organizationName)), -1, PREG_SPLIT_NO_EMPTY);
+    $code = '';
+
+    foreach ($words as $word) {
+        $word = preg_replace('/[^A-Z0-9]/', '', $word);
+        if ($word !== '') {
+            $code .= count($words) === 1 ? substr($word, 0, 4) : $word[0];
+        }
+    }
+
+    if ($code === '') {
+        $code = 'ORG';
+    } elseif (count($words) === 1) {
+        $code = substr($code, 0, 4);
+    }
+
+    $baseCode = $code;
+    $suffix = 1;
+    $check = $db->prepare("SELECT id FROM organizations WHERE organization_code = ? LIMIT 1");
+    while (true) {
+        $check->execute([$code]);
+        if (!$check->fetch()) {
+            return $code;
+        }
+        $suffix++;
+        $code = $baseCode . '-' . $suffix;
+    }
+}
+
 try {
     $database = new Database();
     $db = $database->connect();
@@ -30,20 +61,35 @@ try {
         exit;
     }
 
+    $organizationEmail = trim($data["email"] ?? "");
+    if ($organizationEmail === "") {
+        throw new Exception("An organization email is required to create its portal account.");
+    }
+
+    $existingUserStmt = $db->prepare("SELECT id, role FROM users WHERE email = ? LIMIT 1");
+    $existingUserStmt->execute([$organizationEmail]);
+    $existingUser = $existingUserStmt->fetch(PDO::FETCH_ASSOC);
+    if ($existingUser && empty($data["user_id"])) {
+        http_response_code(409);
+        echo json_encode([
+            "success" => false,
+            "message" => "This email is already registered. Use a different organization email."
+        ]);
+        exit;
+    }
+
     $db->beginTransaction();
     $ownerUserId = (int) ($data["user_id"] ?? 0);
     $createdPortalAccount = false;
+    $organizationName = trim($data["organization_name"] ?? "Organization");
+    $organizationCode = createOrganizationCode($db, $organizationName);
 
     if (!$ownerUserId) {
-        if (empty($data["email"])) {
-            throw new Exception("An organization email is required to create its portal account.");
-        }
-
         $userStmt = $db->prepare("INSERT INTO users (first_name, last_name, email, password, role, phone, status) VALUES (?, ?, ?, ?, 'Organization', ?, ?)");
         $userStmt->execute([
             trim($data["contact_person"] ?? $data["organization_name"] ?? "Organization"),
             "",
-            trim($data["email"]),
+            $organizationEmail,
             password_hash("changeme123", PASSWORD_DEFAULT),
             $data["phone"] ?? "",
             $data["status"] ?? "Active"
@@ -54,6 +100,7 @@ try {
 
     $sql = "INSERT INTO organizations (
                 user_id,
+                organization_code,
                 organization_name,
                 contact_person,
                 phone,
@@ -67,6 +114,7 @@ try {
                 status
             ) VALUES (
                 :user_id,
+                :organization_code,
                 :organization_name,
                 :contact_person,
                 :phone,
@@ -84,7 +132,8 @@ try {
 
     $stmt->execute([
         ":user_id" => $ownerUserId,
-        ":organization_name" => $data["organization_name"] ?? "",
+        ":organization_code" => $organizationCode,
+        ":organization_name" => $organizationName,
         ":contact_person" => $data["contact_person"] ?? "",
         ":phone" => $data["phone"] ?? "",
         ":email" => $data["email"] ?? "",
@@ -107,6 +156,7 @@ try {
         "message" => "Organization created successfully.",
         "organization" => [
             "id" => $organizationId
+            ,"organization_code" => $organizationCode
         ],
         "temporary_password" => $createdPortalAccount ? "changeme123" : null
     ]);

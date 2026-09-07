@@ -162,6 +162,8 @@ export default function AddOrganizationModal({
 
       const savedOrganization: Organization = {
         id: organization?.id ?? response.organization?.id ?? Date.now(),
+        organizationCode: organization?.organizationCode ?? response.organization?.organization_code,
+        reference: organization?.reference ?? response.organization?.organization_code,
 
         name: form.name.trim(),
 

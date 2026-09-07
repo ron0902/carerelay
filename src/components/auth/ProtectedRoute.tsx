@@ -19,7 +19,15 @@ export default function ProtectedRoute({
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     const destination =
-      user.role === "Admin"
+      [
+        "Admin",
+        "System Admin",
+        "Medical Director",
+        "Nursing Director",
+        "Executive Assistant",
+        "Office Admin",
+        "Nurse",
+      ].includes(user.role)
         ? "/dashboard"
         : user.role === "Caregiver"
           ? "/user/dashboard"
@@ -27,7 +35,7 @@ export default function ProtectedRoute({
             ? "/patient/dashboard"
             : user.role === "Organization"
               ? "/organization/dashboard"
-            : "/login";
+              : "/login";
 
     return <Navigate to={destination} replace />;
   }

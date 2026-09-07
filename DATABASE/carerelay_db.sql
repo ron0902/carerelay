@@ -218,6 +218,7 @@ CREATE TABLE `password_resets` (
 CREATE TABLE `patients` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `organization_id` int(11) DEFAULT NULL,
   `date_of_birth` date DEFAULT NULL,
   `gender` enum('Male','Female','Other') DEFAULT NULL,
   `blood_type` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
@@ -225,6 +226,7 @@ CREATE TABLE `patients` (
   `emergency_contact_name` varchar(150) DEFAULT NULL,
   `emergency_contact_phone` varchar(20) DEFAULT NULL,
   `medical_notes` text DEFAULT NULL,
+  `medical_notes_public` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -273,7 +275,7 @@ CREATE TABLE `users` (
   `last_name` varchar(100) NOT NULL,
   `email` varchar(150) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('Admin','Caregiver','Patient','Organization') NOT NULL,
+  `role` enum('Admin','System Admin','Medical Director','Nursing Director','Executive Assistant','Office Admin','Nurse','Caregiver','Patient','Organization') NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `profile_picture` varchar(255) DEFAULT NULL,
   `status` enum('Active','Inactive') DEFAULT 'Active',

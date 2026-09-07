@@ -124,6 +124,8 @@ export default function PatientsPage() {
 
             medicalCondition:
               patient.medical_notes ?? "",
+            medicalNotesPublic:
+              Boolean(patient.medical_notes_public),
 
             createdAt:
               patient.created_at ?? "",

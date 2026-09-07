@@ -1,18 +1,78 @@
+import { useEffect, useState } from "react";
 import { Button, Modal } from "../../components/ui";
 import { type Patient } from "../../types/patient";
+import { updatePatient } from "../../services/patientService";
+import { useAuth } from "../../context/AuthContext";
 
 interface ViewPatientModalProps {
   open: boolean;
   patient: Patient | null;
   onClose: () => void;
+  onVisibilityChange?: (patientId: number, isPublic: boolean) => void;
 }
 
 export default function ViewPatientModal({
   open,
   patient,
   onClose,
+  onVisibilityChange,
 }: ViewPatientModalProps) {
+  const { user } = useAuth();
+  const [notesPublic, setNotesPublic] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
+
+  const canManageVisibility =
+    ["Admin", "System Admin", "Organization"].includes(user?.role ?? "");
+
+  useEffect(() => {
+    if (patient) {
+      setNotesPublic(Boolean(patient.medicalNotesPublic));
+    }
+  }, [patient]);
+
   if (!patient) return null;
+
+  const handleToggleVisibility = async () => {
+    const nextValue = !notesPublic;
+    setNotesPublic(nextValue);
+    setSavingVisibility(true);
+
+    try {
+      const response = await updatePatient({
+        actor_user_id: user?.id,
+        id: patient.id,
+        first_name: patient.name.split(/\s+/)[0] ?? "",
+        last_name: patient.name.split(/\s+/).slice(1).join(" ") ?? "",
+        email: patient.email,
+        phone: patient.phone,
+        status: patient.status,
+        date_of_birth: patient.dateOfBirth,
+        gender: patient.gender,
+        blood_type: patient.bloodType,
+        address: patient.address,
+        emergency_contact_name: patient.emergencyContactName,
+        emergency_contact_phone: patient.emergencyContactPhone,
+        medical_notes: patient.medicalCondition,
+        medical_notes_public: nextValue ? 1 : 0,
+      });
+
+      if (!response.success) {
+        setNotesPublic(!nextValue);
+        alert(response.message || "Unable to update note visibility.");
+        return;
+      }
+
+      if (onVisibilityChange) {
+        onVisibilityChange(patient.id, nextValue);
+      }
+    } catch (error) {
+      console.error("Failed to toggle patient note visibility:", error);
+      setNotesPublic(!nextValue);
+      alert("Unable to update note visibility.");
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
 
   return (
     <Modal
@@ -188,14 +248,40 @@ export default function ViewPatientModal({
             Medical Information
           </h3>
 
+          {canManageVisibility && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Notes visibility
+                </p>
+                <p className="text-sm text-gray-700">
+                  {notesPublic ? "Visible to everyone" : "Hidden from others"}
+                </p>
+              </div>
+
+              <Button
+                variant={notesPublic ? "secondary" : "primary"}
+                onClick={handleToggleVisibility}
+                disabled={savingVisibility}
+              >
+                {savingVisibility
+                  ? "Saving..."
+                  : notesPublic
+                    ? "Hide from everyone"
+                    : "Show to everyone"}
+              </Button>
+            </div>
+          )}
+
           <div>
             <p className="text-sm text-gray-500">
               Medical Notes
             </p>
 
             <div className="mt-2 rounded-lg bg-gray-50 p-4 text-gray-700">
-              {patient.medicalCondition ||
-                "No medical notes available."}
+              {canManageVisibility || notesPublic
+                ? patient.medicalCondition || "No medical notes available."
+                : "Medical notes are currently hidden from other caregivers and patients."}
             </div>
           </div>
         </div>

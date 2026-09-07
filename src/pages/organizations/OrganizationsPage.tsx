@@ -61,10 +61,12 @@ export default function OrganizationsPage() {
         const mappedOrganizations: Organization[] =
           response.organizations.map((item: any) => ({
             id: Number(item.id),
+            organizationCode: item.organization_code ?? `ORG-${String(item.id).padStart(4, "0")}`,
+            reference: item.organization_code ?? `ORG-${String(item.id).padStart(4, "0")}`,
 
             name: item.organization_name ?? "",
 
-            type: item.description ?? "",
+            type: item.description?.trim() || "Not specified",
 
             contactPerson: item.contact_person ?? "",
 
@@ -73,6 +75,11 @@ export default function OrganizationsPage() {
             email: item.email ?? "",
 
             address: item.address ?? "",
+            city: item.city ?? "",
+            province: item.province ?? "",
+            postalCode: item.postal_code ?? "",
+            description: item.description ?? "",
+            website: item.website ?? "",
 
             status:
               item.status === "Inactive"

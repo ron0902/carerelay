@@ -161,6 +161,14 @@ try {
         $data["bio"] ?? ""
     ]);
 
+    if ($organizationId) {
+        $member = $conn->prepare(
+            "INSERT INTO organization_members (organization_id, user_id, member_role, status)
+             VALUES (?, ?, 'Caregiver', 'Active')"
+        );
+        $member->execute([$organizationId, $userId]);
+    }
+
     $conn->commit();
 
     echo json_encode([

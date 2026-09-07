@@ -30,11 +30,30 @@ export default function ViewOrganizationModal({
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">
+                Organization Reference
+              </p>
+              <p className="font-semibold">
+                {organization.organizationCode ?? organization.reference ?? `ORG-${organization.id}`}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Description</p>
+              <p className="font-semibold">{organization.description || "Not specified"}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">
                 Organization Name
               </p>
               <p className="font-semibold">
                 {organization.name}
               </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500">Website</p>
+              <p className="font-semibold">{organization.website || "Not specified"}</p>
             </div>
 
             <div>
@@ -106,7 +125,12 @@ export default function ViewOrganizationModal({
             Address
           </h3>
 
-          <p>{organization.address}</p>
+          <p>{organization.address || "Not specified"}</p>
+          {(organization.city || organization.province || organization.postalCode) && (
+            <p className="mt-2 text-gray-600">
+              {[organization.city, organization.province, organization.postalCode].filter(Boolean).join(", ")}
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end border-t pt-5">

@@ -22,13 +22,23 @@ try {
     $requestedOrganizationId = isset($_GET["organization_id"])
         ? (int) $_GET["organization_id"]
         : null;
+
+    $userRole = null;
+    if ($requestUserId > 0) {
+        $userStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+        $userStmt->execute([$requestUserId]);
+        $userRole = $userStmt->fetchColumn();
+    }
+
     $organization = $requestUserId
         ? findOrganizationForUser($conn, $requestUserId, $requestedOrganizationId)
         : null;
 
-    if ($requestUserId && !$organization) {
+    if ($requestUserId && !$organization && $userRole !== "Caregiver" && $userRole !== "Patient") {
         jsonError("You do not have access to this organization.", 403);
     }
+
+    $canViewPrivateNotes = in_array($userRole, ["Admin", "Organization"], true);
 
     $sql = "
         SELECT
@@ -49,7 +59,11 @@ try {
             p.address,
             p.emergency_contact_name,
             p.emergency_contact_phone,
-            p.medical_notes,
+            CASE
+                WHEN p.medical_notes_public = 1 OR :canViewPrivateNotes = 1 THEN p.medical_notes
+                ELSE NULL
+            END AS medical_notes,
+            p.medical_notes_public,
 
             p.created_at,
             p.updated_at
@@ -59,13 +73,29 @@ try {
         INNER JOIN users u
             ON p.user_id = u.id
 
-        " . ($organization ? "WHERE p.organization_id = :organization_id" : "") . "
+        LEFT JOIN assignments a
+            ON a.patient_id = p.id
+            AND a.status IN ('Active', 'Assigned')
 
+        WHERE 1 = 1
+        " . ($requestUserId && $userRole === "Caregiver" ? "AND a.caregiver_id IN (SELECT id FROM caregivers WHERE user_id = :request_user_id)" : "") . "
+        " . ($requestUserId && $userRole === "Patient" ? "AND p.user_id = :request_user_id" : "") . "
+        " . ($requestUserId && $organization && $userRole !== "Caregiver" && $userRole !== "Patient" ? "AND p.organization_id = :organization_id" : "") . "
+        " . (!$requestUserId ? "" : "") . "
+
+        GROUP BY p.id
         ORDER BY p.id DESC
     ";
 
     $stmt = $conn->prepare($sql);
-    if ($organization) {
+    $stmt->bindValue(":canViewPrivateNotes", $canViewPrivateNotes ? 1 : 0, PDO::PARAM_INT);
+    if ($requestUserId && $userRole === "Caregiver") {
+        $stmt->bindValue(":request_user_id", $requestUserId, PDO::PARAM_INT);
+    }
+    if ($requestUserId && $userRole === "Patient") {
+        $stmt->bindValue(":request_user_id", $requestUserId, PDO::PARAM_INT);
+    }
+    if ($requestUserId && $organization && $userRole !== "Caregiver" && $userRole !== "Patient") {
         $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
     }
     $stmt->execute();

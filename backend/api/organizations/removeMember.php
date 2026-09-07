@@ -15,7 +15,7 @@ try {
         jsonError('actor_user_id and member_id are required.');
     }
 
-    $stmt = $db->prepare("SELECT m.id, m.user_id, m.organization_id, o.user_id AS owner_user_id FROM organization_members m INNER JOIN organizations o ON o.id = m.organization_id WHERE m.id = ? LIMIT 1");
+    $stmt = $db->prepare("SELECT m.id, m.user_id, m.organization_id, m.member_role, o.user_id AS owner_user_id FROM organization_members m INNER JOIN organizations o ON o.id = m.organization_id WHERE m.id = ? LIMIT 1");
     $stmt->execute([$memberId]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$member) {
@@ -25,8 +25,19 @@ try {
     $actorStmt = $db->prepare("SELECT role FROM users WHERE id = ? AND status = 'Active' LIMIT 1");
     $actorStmt->execute([$actorId]);
     $actor = $actorStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$actor || ($actor['role'] !== 'Admin' && (int) $member['owner_user_id'] !== $actorId)) {
-        jsonError('Only the platform admin or organization owner can manage members.', 403);
+    if (!$actor) {
+        jsonError('Actor user not found.', 404);
+    }
+
+    $actorMembershipStmt = $db->prepare("SELECT member_role FROM organization_members WHERE organization_id = ? AND user_id = ? AND status = 'Active' LIMIT 1");
+    $actorMembershipStmt->execute([$member['organization_id'], $actorId]);
+    $actorOrgRole = $actorMembershipStmt->fetchColumn();
+    $isPlatformAdmin = $actor['role'] === 'Admin';
+    $isOrgOwner = (int) $member['owner_user_id'] === $actorId;
+    $isOrgAdmin = $actorOrgRole === 'Admin';
+
+    if (!$isPlatformAdmin && !$isOrgOwner && !$isOrgAdmin) {
+        jsonError('Only the platform admin, organization owner, or an organization admin can manage members.', 403);
     }
     if ((int) $member['user_id'] === (int) $member['owner_user_id']) {
         jsonError('The organization owner cannot be removed.', 400);

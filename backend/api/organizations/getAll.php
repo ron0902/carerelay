@@ -13,6 +13,7 @@ try {
     $sql = "
         SELECT
             o.id,
+            o.organization_code,
             o.user_id,
             o.organization_name,
             o.contact_person,

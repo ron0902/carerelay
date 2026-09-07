@@ -33,6 +33,14 @@ if (empty($data["id"])) {
     exit();
 }
 
+$actorUserId = isset($data["actor_user_id"]) ? (int) $data["actor_user_id"] : null;
+$actorRole = null;
+if ($actorUserId) {
+    $actorStmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+    $actorStmt->execute([$actorUserId]);
+    $actorRole = $actorStmt->fetchColumn();
+}
+
 try {
 
     $conn->beginTransaction();
@@ -41,7 +49,7 @@ try {
      * Get the user's ID connected to this patient
      */
     $findPatient = $conn->prepare("
-        SELECT user_id
+        SELECT user_id, organization_id
         FROM patients
         WHERE id = ?
         LIMIT 1
@@ -65,6 +73,32 @@ try {
     }
 
     $userId = $patient["user_id"];
+    $patientOrganizationId = isset($patient["organization_id"]) ? (int) $patient["organization_id"] : 0;
+
+    $canEditVisibility = in_array($actorRole, ["Admin", "System Admin", "Organization"], true);
+
+    if (!$canEditVisibility && $actorUserId > 0 && $patientOrganizationId > 0) {
+        $memberStmt = $conn->prepare("
+            SELECT member_role
+            FROM organization_members
+            WHERE user_id = ?
+              AND organization_id = ?
+              AND status = 'Active'
+            LIMIT 1
+        ");
+        $memberStmt->execute([$actorUserId, $patientOrganizationId]);
+
+        $memberRole = $memberStmt->fetchColumn();
+        $canEditVisibility = in_array($memberRole, ["Owner", "Admin"], true);
+    }
+
+    if (!$canEditVisibility && !empty($data["medical_notes_public"])) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Only admin or organization owner can change note visibility."
+        ]);
+        exit();
+    }
 
     /*
      * Update users table
@@ -101,7 +135,8 @@ try {
             address = ?,
             emergency_contact_name = ?,
             emergency_contact_phone = ?,
-            medical_notes = ?
+            medical_notes = ?,
+            medical_notes_public = ?
         WHERE id = ?
     ");
 
@@ -113,6 +148,7 @@ try {
         $data["emergency_contact_name"],
         $data["emergency_contact_phone"],
         $data["medical_notes"],
+        !empty($data["medical_notes_public"]) ? 1 : 0,
         $data["id"]
     ]);
 

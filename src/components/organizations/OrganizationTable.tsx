@@ -80,8 +80,13 @@ export default function OrganizationTable({
                       </p>
 
                       <p className="text-sm text-gray-500">
-                        ORG-
-                        {String(organization.id).padStart(4,"0")}
+                        <button
+                          type="button"
+                          onClick={() => onView(organization)}
+                          className="font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          {organization.organizationCode ?? organization.reference ?? `ORG-${String(organization.id).padStart(4, "0")}`}
+                        </button>
                       </p>
 
                     </div>

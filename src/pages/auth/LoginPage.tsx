@@ -70,6 +70,12 @@ export default function LoginPage() {
 
       switch (data.user.role) {
         case "Admin":
+        case "System Admin":
+        case "Medical Director":
+        case "Nursing Director":
+        case "Executive Assistant":
+        case "Office Admin":
+        case "Nurse":
           navigate("/dashboard");
           break;
 

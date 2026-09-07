@@ -3,6 +3,8 @@ import { Building2, ClipboardList, UserCog, Users, Bell } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import PageHeader from "../../components/common/PageHeader";
 import StatCard from "../../components/dashboard/Statcard";
+import ViewOrganizationModal from "../../components/organizations/ViewOrganizationModal";
+import type { Organization } from "../../types/organization";
 import {
   getOrganizationAssignments,
   getOrganizationCaregivers,
@@ -15,6 +17,8 @@ export default function OrganizationPortalPage({ section = "dashboard" }: { sect
   const { user } = useAuth();
   const [data, setData] = useState({ members: 0, patients: 0, caregivers: 0, assignments: 0, unread: 0, name: "Organization" });
   const [error, setError] = useState("");
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +37,26 @@ export default function OrganizationPortalPage({ section = "dashboard" }: { sect
         unread: notifications.unread_count ?? 0,
         name: members.organization?.organization_name ?? "Organization",
       });
+      if (members.organization) {
+        const item = members.organization;
+        setOrganization({
+          id: Number(item.id),
+          organizationCode: item.organization_code ?? `ORG-${String(item.id).padStart(4, "0")}`,
+          reference: item.organization_code ?? `ORG-${String(item.id).padStart(4, "0")}`,
+          name: item.organization_name ?? "",
+          type: item.description?.trim() || "Not specified",
+          contactPerson: item.contact_person ?? "",
+          phone: item.phone ?? "",
+          email: item.email ?? "",
+          address: item.address ?? "",
+          city: item.city ?? "",
+          province: item.province ?? "",
+          postalCode: item.postal_code ?? "",
+          description: item.description ?? "",
+          website: item.website ?? "",
+          status: item.status === "Inactive" ? "Inactive" : "Active",
+        });
+      }
     }).catch(() => setError("Unable to load organization data. Please check that the database migration has been applied."));
   }, [user]);
 
@@ -56,6 +80,15 @@ export default function OrganizationPortalPage({ section = "dashboard" }: { sect
   return (
     <div className="space-y-8">
       <PageHeader title={title} description={`${data.name} healthcare management overview`} />
+      {organization && (
+        <button
+          type="button"
+          onClick={() => setDetailsOpen(true)}
+          className="-mt-4 font-medium text-blue-700 hover:text-blue-900 hover:underline"
+        >
+          Reference: {organization.reference}
+        </button>
+      )}
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
         {(section === "dashboard" ? statCards : statCards.filter((card) => cards.some(([label]) => label.toLowerCase().includes(card.title.toLowerCase())))).map((stat) => (
@@ -73,6 +106,11 @@ export default function OrganizationPortalPage({ section = "dashboard" }: { sect
           </div>
         </div>
       )}
+      <ViewOrganizationModal
+        open={detailsOpen}
+        organization={organization}
+        onClose={() => setDetailsOpen(false)}
+      />
     </div>
   );
 }

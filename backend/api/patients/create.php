@@ -11,6 +11,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+require_once "../../config/database.php";
+
+$database = new Database();
+$conn = $database->connect();
+
+$data = json_decode(file_get_contents("php://input"), true);
+
 $organizationId = isset($data["organization_id"])
     ? (int) $data["organization_id"]
     : null;
@@ -28,13 +35,6 @@ if ($organizationId) {
         jsonError("You do not have access to this organization.", 403);
     }
 }
-
-require_once "../../config/database.php";
-
-$database = new Database();
-$conn = $database->connect();
-
-$data = json_decode(file_get_contents("php://input"), true);
 
 if (!$data) {
     echo json_encode([
@@ -102,11 +102,12 @@ try {
             address,
             emergency_contact_name,
             emergency_contact_phone,
-            medical_notes
+            medical_notes,
+            medical_notes_public
         )
         VALUES
         (
-            ?,?,?,?,?,?,?,?,?
+            ?,?,?,?,?,?,?,?,?,?
         )
     ");
 
@@ -119,14 +120,20 @@ try {
         $data["address"],
         $data["emergency_contact_name"],
         $data["emergency_contact_phone"],
-        $data["medical_notes"]
+        $data["medical_notes"],
+        !empty($data["medical_notes_public"]) ? 1 : 0
     ]);
+
+    $patientId = (int) $conn->lastInsertId();
 
     $conn->commit();
 
     echo json_encode([
         "success" => true,
-        "message" => "Patient created successfully."
+        "message" => "Patient created successfully.",
+        "patient" => [
+            "id" => $patientId
+        ]
     ]);
 
 } catch (Exception $e) {

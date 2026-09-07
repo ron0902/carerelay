@@ -11,6 +11,7 @@ export interface Patient {
   emergencyContactPhone: string;
 
   medicalCondition: string;
+  medicalNotesPublic: boolean;
 
   // Joined from users table
   name: string;

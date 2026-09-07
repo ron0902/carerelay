@@ -27,6 +27,7 @@ interface PatientForm {
   emergencyContactName: string;
   emergencyContactPhone: string;
   medicalNotes: string;
+  medicalNotesPublic: boolean;
   password: string;
 }
 
@@ -50,6 +51,7 @@ export default function AddPatientModal({
     emergencyContactName: "",
     emergencyContactPhone: "",
     medicalNotes: "",
+    medicalNotesPublic: false,
     password: "Patient@123",
   });
 
@@ -86,6 +88,8 @@ export default function AddPatientModal({
 
         medicalNotes:
           patient.medicalCondition ?? "",
+        medicalNotesPublic:
+          Boolean(patient.medicalNotesPublic),
 
         // Don't replace the patient's password when editing
         password: "Patient@123",
@@ -116,6 +120,7 @@ export default function AddPatientModal({
       emergencyContactName: "",
       emergencyContactPhone: "",
       medicalNotes: "",
+      medicalNotesPublic: false,
       password: "Patient@123",
     });
   };
@@ -176,6 +181,7 @@ export default function AddPatientModal({
         form.emergencyContactPhone,
 
       medical_notes: form.medicalNotes,
+      medical_notes_public: form.medicalNotesPublic ? 1 : 0,
 
       // Only needed when creating
       password: form.password,
@@ -207,7 +213,7 @@ export default function AddPatientModal({
       }
 
       const savedPatient: Patient = {
-        id: patient?.id ?? response.patient?.id ?? Date.now(),
+        id: patient?.id ?? Number(response.patient?.id ?? 0),
 
         name: `${form.firstName.trim()} ${form.lastName.trim()}`,
 
@@ -228,6 +234,7 @@ export default function AddPatientModal({
         bloodType: form.bloodType,
 
         medicalCondition: form.medicalNotes,
+        medicalNotesPublic: form.medicalNotesPublic,
 
         emergencyContactName:
           form.emergencyContactName,
@@ -235,6 +242,11 @@ export default function AddPatientModal({
         emergencyContactPhone:
           form.emergencyContactPhone,
       };
+
+      if (!savedPatient.id) {
+        alert("Patient was created but the record ID was not returned. Please refresh and try again.");
+        return;
+      }
 
       onSave(savedPatient);
 

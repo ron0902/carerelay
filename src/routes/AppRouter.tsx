@@ -33,6 +33,7 @@ import ReportsPage from "../pages/reports/ReportsPage";
 import CarePlansPage from "../pages/carePlans/CarePlansPage";
 import OrganizationLayout from "../layouts/OrganizationLayout";
 import OrganizationPortalPage from "../pages/organization/OrganizationPortalPage";
+import OrganizationMembersPage from "../pages/organization/OrganizationMembersPage";
 
 export default function AppRouter() {
  return (
@@ -47,10 +48,20 @@ export default function AppRouter() {
 
     <Route path="/ui" element={<UIShowcasePage />} />
 
-    {/* Admin */}
+    {/* System / admin-level staff */}
     <Route
       element={
-        <ProtectedRoute allowedRoles={["Admin"]}>
+        <ProtectedRoute
+          allowedRoles={[
+            "Admin",
+            "System Admin",
+            "Medical Director",
+            "Nursing Director",
+            "Executive Assistant",
+            "Office Admin",
+            "Nurse",
+          ]}
+        >
           <DashboardLayout />
         </ProtectedRoute>
       }
@@ -107,7 +118,7 @@ export default function AppRouter() {
       }
     >
       <Route path="/organization/dashboard" element={<OrganizationPortalPage />} />
-      <Route path="/organization/members" element={<OrganizationPortalPage section="members" />} />
+      <Route path="/organization/members" element={<OrganizationMembersPage />} />
       <Route path="/organization/patients" element={<PatientsPage />} />
       <Route path="/organization/caregivers" element={<CaregiversPage />} />
       <Route path="/organization/assignments" element={<AssignmentsPage />} />
