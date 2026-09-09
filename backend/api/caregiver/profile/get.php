@@ -30,7 +30,13 @@ try {
             u.status,
             c.id AS caregiver_id,
             c.license_number,
+            c.license_expiration_date,
             c.specialization,
+            c.certifications,
+            (SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ')
+             FROM caregiver_skill_sets css
+             INNER JOIN skill_sets s ON s.id = css.skill_set_id
+             WHERE css.caregiver_id = c.id) AS skills,
             c.experience_years,
             c.availability,
             c.hourly_rate,

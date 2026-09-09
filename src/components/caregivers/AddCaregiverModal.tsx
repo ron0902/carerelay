@@ -27,6 +27,9 @@ export default function AddCaregiverModal({
     email: "",
 
     licenseNumber: "",
+    licenseExpirationDate: "",
+    certifications: "",
+    skills: "",
     experience: "",
     availability: "Available",
     hourlyRate: "",
@@ -49,6 +52,9 @@ export default function AddCaregiverModal({
         email: caregiver.email ?? "",
 
         licenseNumber: caregiver.licenseNumber ?? "",
+        licenseExpirationDate: caregiver.licenseExpirationDate ?? "",
+        certifications: caregiver.certifications ?? "",
+        skills: caregiver.skills?.join(", ") ?? "",
         experience: caregiver.experience?.toString() ?? "",
         availability: caregiver.availability ?? "Available",
         hourlyRate: caregiver.hourlyRate?.toString() ?? "",
@@ -63,6 +69,9 @@ export default function AddCaregiverModal({
         email: "",
 
         licenseNumber: "",
+        licenseExpirationDate: "",
+        certifications: "",
+        skills: "",
         experience: "",
         availability: "Available",
         hourlyRate: "",
@@ -125,6 +134,9 @@ export default function AddCaregiverModal({
       status: form.status,
 
       license_number: form.licenseNumber.trim(),
+      license_expiration_date: form.licenseExpirationDate || null,
+      certifications: form.certifications.trim(),
+      skills: Array.from(new Set(form.skills.split(",").map((skill) => skill.trim()).filter(Boolean))),
 
       // specialization intentionally omitted
       experience_years: Number(form.experience) || 0,
@@ -165,6 +177,9 @@ export default function AddCaregiverModal({
         email: form.email.trim(),
 
         licenseNumber: form.licenseNumber.trim(),
+        licenseExpirationDate: form.licenseExpirationDate,
+        certifications: form.certifications.trim(),
+        skills: Array.from(new Set(form.skills.split(",").map((skill) => skill.trim()).filter(Boolean))),
 
         experience:
           Number(form.experience) || 0,
@@ -292,6 +307,33 @@ export default function AddCaregiverModal({
               })
             }
           />
+
+          <Input
+            label="License Expiration Date"
+            type="date"
+            value={form.licenseExpirationDate}
+            onChange={(e) =>
+              setForm({ ...form, licenseExpirationDate: e.target.value })
+            }
+          />
+
+          <Input
+            label="Basic Skill Set"
+            placeholder="First aid, dementia care, mobility assistance"
+            value={form.skills}
+            onChange={(e) => setForm({ ...form, skills: e.target.value })}
+          />
+
+          <div>
+            <label className="mb-2 block font-medium">Certifications</label>
+            <textarea
+              className="w-full rounded-lg border p-3"
+              rows={3}
+              placeholder="BLS, CPR, Alzheimer’s care"
+              value={form.certifications}
+              onChange={(e) => setForm({ ...form, certifications: e.target.value })}
+            />
+          </div>
 
           <Input
             label="Years of Experience"

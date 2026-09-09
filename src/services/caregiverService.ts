@@ -215,7 +215,10 @@ export const updateCaregiverProfile = async (
     email: string;
     phone: string;
     license_number: string;
+    license_expiration_date?: string;
     specialization: string;
+    certifications?: string;
+    skills?: string[];
     experience_years: number;
     bio: string;
   }

@@ -102,6 +102,27 @@ export default function ViewCaregiverModal({
             </div>
 
             <div>
+              <p className="text-sm text-gray-500">License Expiration</p>
+              <p className="font-semibold">
+                {caregiver.licenseExpirationDate || "Not provided"}
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <p className="text-sm text-gray-500">Basic Skill Set</p>
+              <p className="font-semibold">
+                {caregiver.skills?.join(", ") || "Not provided"}
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <p className="text-sm text-gray-500">Certifications</p>
+              <p className="font-semibold">
+                {caregiver.certifications || "Not provided"}
+              </p>
+            </div>
+
+            <div>
               <p className="text-sm text-gray-500">
                 Availability
               </p>

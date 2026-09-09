@@ -140,26 +140,42 @@ try {
             user_id,
             organization_id,
             license_number,
+            license_expiration_date,
             specialization,
+            certifications,
             experience_years,
             availability,
             hourly_rate,
             bio
         )
         VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $caregiver->execute([
         $userId,
         $organizationId,
         $data["license_number"] ?? "",
+        $data["license_expiration_date"] ?? null,
         $data["specialization"] ?? "",
+        $data["certifications"] ?? "",
         $data["experience_years"] ?? 0,
         $data["availability"] ?? "Available",
         $data["hourly_rate"] ?? 0,
         $data["bio"] ?? ""
     ]);
+
+    $skills = array_values(array_unique(array_filter(array_map(
+        static fn($skill) => trim((string) $skill),
+        is_array($data["skills"] ?? null) ? $data["skills"] : []
+    ))));
+    $skillLookup = $conn->prepare("INSERT INTO skill_sets (name) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)");
+    $caregiverSkill = $conn->prepare("INSERT IGNORE INTO caregiver_skill_sets (caregiver_id, skill_set_id) VALUES (?, ?)");
+    $caregiverId = $conn->lastInsertId();
+    foreach ($skills as $skill) {
+        $skillLookup->execute([$skill]);
+        $caregiverSkill->execute([$caregiverId, $conn->lastInsertId()]);
+    }
 
     if ($organizationId) {
         $member = $conn->prepare(

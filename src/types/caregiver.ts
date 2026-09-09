@@ -8,6 +8,9 @@ export interface Caregiver {
   email: string;
 
   licenseNumber: string;
+  licenseExpirationDate?: string;
+  certifications?: string;
+  skills?: string[];
   experience: number;
 
   availability: "Available" | "Busy" | "Off Duty";

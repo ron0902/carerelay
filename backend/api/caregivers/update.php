@@ -93,7 +93,9 @@ try {
         UPDATE caregivers
         SET
             license_number = ?,
+            license_expiration_date = ?,
             specialization = ?,
+            certifications = ?,
             experience_years = ?,
             availability = ?,
             hourly_rate = ?,
@@ -103,13 +105,27 @@ try {
 
     $caregiverUpdate->execute([
         $data["license_number"] ?? "",
+        $data["license_expiration_date"] ?? null,
         $data["specialization"] ?? "",
+        $data["certifications"] ?? "",
         $data["experience_years"] ?? 0,
         $data["availability"] ?? "Available",
         $data["hourly_rate"] ?? 0,
         $data["bio"] ?? "",
         $data["id"]
     ]);
+
+    $conn->prepare("DELETE FROM caregiver_skill_sets WHERE caregiver_id = ?")->execute([$data["id"]]);
+    $skills = array_values(array_unique(array_filter(array_map(
+        static fn($skill) => trim((string) $skill),
+        is_array($data["skills"] ?? null) ? $data["skills"] : []
+    ))));
+    $skillLookup = $conn->prepare("INSERT INTO skill_sets (name) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)");
+    $caregiverSkill = $conn->prepare("INSERT IGNORE INTO caregiver_skill_sets (caregiver_id, skill_set_id) VALUES (?, ?)");
+    foreach ($skills as $skill) {
+        $skillLookup->execute([$skill]);
+        $caregiverSkill->execute([$data["id"], $conn->lastInsertId()]);
+    }
 
     $conn->commit();
 

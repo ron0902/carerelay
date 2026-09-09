@@ -77,6 +77,15 @@ export default function CaregiversPage() {
           licenseNumber:
             caregiver.license_number ?? "",
 
+          licenseExpirationDate:
+            caregiver.license_expiration_date ?? "",
+
+          certifications:
+            caregiver.certifications ?? "",
+
+          skills:
+            caregiver.skills ? caregiver.skills.split(", ") : [],
+
           experience:
             Number(caregiver.experience_years) || 0,
 

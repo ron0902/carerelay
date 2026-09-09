@@ -7,7 +7,10 @@ export interface UserProfile {
   email: string;
   phone: string;
   license_number: string;
+  license_expiration_date: string;
   specialization: string;
+  certifications: string;
+  skills: string[];
   experience_years: number;
   bio: string;
   status: string;
@@ -118,6 +121,18 @@ export default function EditProfileModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-600">
+              License Expiration Date
+            </label>
+            <input
+              type="date"
+              className="w-full rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-500"
+              value={form.license_expiration_date}
+              onChange={(e) => setForm({ ...form, license_expiration_date: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-600">
               Specialization
             </label>
             <input
@@ -127,6 +142,29 @@ export default function EditProfileModal({
                 setForm({ ...form, specialization: e.target.value })
               }
               placeholder="Area of specialization"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-600">
+              Basic Skill Set
+            </label>
+            <input
+              className="w-full rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-500"
+              value={form.skills.join(", ")}
+              onChange={(e) => setForm({ ...form, skills: Array.from(new Set(e.target.value.split(",").map((skill) => skill.trim()).filter(Boolean))) })}
+              placeholder="First aid, dementia care, mobility assistance"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-600">Certifications</label>
+            <textarea
+              rows={3}
+              className="w-full resize-none rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-500"
+              value={form.certifications}
+              onChange={(e) => setForm({ ...form, certifications: e.target.value })}
+              placeholder="BLS, CPR, Alzheimer’s care"
             />
           </div>
 
