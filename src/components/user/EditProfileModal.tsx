@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Modal } from "../../components/ui";
+import { CAREGIVER_SKILLS } from "../../constants/caregiverSkills";
 
 export interface UserProfile {
   first_name: string;
@@ -147,13 +148,56 @@ export default function EditProfileModal({
 
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium text-slate-600">
-              Basic Skill Set
+              Caregiving Skills
             </label>
+            <p className="mb-3 text-sm text-slate-500">
+              Select the duties you can confidently provide.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CAREGIVER_SKILLS.map((skill) => (
+                <label
+                  key={skill}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:bg-blue-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.skills.includes(skill)}
+                    onChange={(e) => {
+                      const nextSkills = e.target.checked
+                        ? [...form.skills, skill]
+                        : form.skills.filter((item) => item !== skill);
+                      setForm({
+                        ...form,
+                        skills: Array.from(new Set(nextSkills)),
+                      });
+                    }}
+                    className="mt-1 h-4 w-4 accent-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">{skill}</span>
+                </label>
+              ))}
+            </div>
             <input
-              className="w-full rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-500"
-              value={form.skills.join(", ")}
-              onChange={(e) => setForm({ ...form, skills: Array.from(new Set(e.target.value.split(",").map((skill) => skill.trim()).filter(Boolean))) })}
-              placeholder="First aid, dementia care, mobility assistance"
+              className="mt-3 w-full rounded-lg border border-slate-200 p-3 outline-none focus:border-blue-500"
+              value={form.skills
+                .filter((skill) => !CAREGIVER_SKILLS.includes(skill as typeof CAREGIVER_SKILLS[number]))
+                .join(", ")}
+              onChange={(e) => {
+                const customSkills = e.target.value
+                  .split(",")
+                  .map((skill) => skill.trim())
+                  .filter(Boolean);
+                setForm({
+                  ...form,
+                  skills: [
+                    ...form.skills.filter((skill) =>
+                      CAREGIVER_SKILLS.includes(skill as typeof CAREGIVER_SKILLS[number])
+                    ),
+                    ...customSkills,
+                  ],
+                });
+              }}
+              placeholder="Other skills, separated by commas"
             />
           </div>
 

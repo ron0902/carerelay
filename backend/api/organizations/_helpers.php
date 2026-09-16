@@ -10,10 +10,18 @@ function findOrganizationForUser(PDO $db, int $userId, ?int $organizationId = nu
         return null;
     }
 
-    if ($user['role'] === 'Admin' && $organizationId !== null) {
-        $organizationStmt = $db->prepare("SELECT id, organization_code, user_id, organization_name, contact_person, phone, email, address, city, province, postal_code, description, website, status FROM organizations WHERE id = ? LIMIT 1");
-        $organizationStmt->execute([$organizationId]);
-        return $organizationStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($user['role'] === 'Admin') {
+        if ($organizationId !== null) {
+            $organizationStmt = $db->prepare("SELECT id, organization_code, user_id, organization_name, contact_person, phone, email, address, city, province, postal_code, description, website, status FROM organizations WHERE id = ? LIMIT 1");
+            $organizationStmt->execute([$organizationId]);
+            return $organizationStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        return [
+            'id' => null,
+            'global_access' => true,
+            'organization_name' => 'All Organizations',
+        ];
     }
 
     if ($user['role'] === 'Organization') {

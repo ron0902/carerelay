@@ -1,0 +1,17 @@
+export const CAREGIVER_SKILLS = [
+  "Bathing and grooming",
+  "Dressing and laundry",
+  "Meal planning and preparation",
+  "Food shopping",
+  "Light housekeeping",
+  "Medication reminders and monitoring",
+  "Transportation and driving",
+  "Mobility assistance",
+  "Lifting and transferring",
+  "Personal hygiene and oral care",
+  "Dementia care",
+  "Companionship and emotional support",
+  "Doctor and family communication",
+  "Home safety",
+  "CPR and first aid",
+] as const;

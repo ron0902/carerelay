@@ -44,6 +44,10 @@ export default function CaregiverTable({
             </th>
 
             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
+              Skills
+            </th>
+
+            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">
               Availability
             </th>
 
@@ -102,6 +106,20 @@ export default function CaregiverTable({
               {/* Experience */}
               <td className="px-6 py-4">
                 {caregiver.experience} years
+              </td>
+
+              {/* Skills */}
+              <td className="px-6 py-4">
+                <div className="flex max-w-xs flex-wrap gap-1">
+                  {caregiver.skills?.length ? caregiver.skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                    >
+                      {skill}
+                    </span>
+                  )) : <span className="text-gray-400">-</span>}
+                </div>
               </td>
 
               {/* Availability */}

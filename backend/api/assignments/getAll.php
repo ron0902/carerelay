@@ -18,6 +18,7 @@ try {
     $organization = $requestUserId
         ? findOrganizationForUser($db, $requestUserId, $requestedOrganizationId)
         : null;
+    $isGlobalAdmin = $requestUserId > 0 && is_array($organization) && ($organization["global_access"] ?? false) === true;
     if ($requestUserId && !$organization) {
         jsonError("You do not have access to this organization.", 403);
     }
@@ -79,13 +80,13 @@ try {
         LEFT JOIN organizations o
             ON a.organization_id = o.id
 
-        " . ($organization ? "WHERE a.organization_id = :organization_id" : "") . "
+        " . (!$isGlobalAdmin && $organization ? "WHERE a.organization_id = :organization_id" : "") . "
 
         ORDER BY a.id DESC
     ";
 
     $stmt = $db->prepare($sql);
-    if ($organization) {
+    if (!$isGlobalAdmin && $organization) {
         $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
     }
     $stmt->execute();

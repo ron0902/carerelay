@@ -79,6 +79,18 @@ npm run dev
 npm run build
 ```
 
+### Gemini caregiver matching
+
+The assignment form calls `backend/api/assignments/match.php` when a patient and organization are selected. Gemini ranks caregivers by the patient's care needs; if Gemini is unavailable, the endpoint falls back to exact skill matching.
+
+Keep the Gemini key on the PHP server. In XAMPP Apache, add this to the active virtual host or Apache configuration, replace the placeholder, and restart Apache:
+
+```apache
+SetEnv GEMINI_API_KEY "your-gemini-api-key"
+```
+
+The frontend never receives this key. The PHP cURL extension must also be enabled.
+
 ---
 
 ## Available Modules

@@ -25,6 +25,7 @@ try {
     $organization = $requestUserId
         ? findOrganizationForUser($conn, $requestUserId, $requestedOrganizationId)
         : null;
+    $isGlobalAdmin = $requestUserId > 0 && is_array($organization) && ($organization["global_access"] ?? false) === true;
 
     if ($requestUserId && !$organization) {
         jsonError("You do not have access to this organization.", 403);
@@ -66,13 +67,13 @@ try {
 
         WHERE u.role = 'Caregiver'
 
-        " . ($organization ? "AND c.organization_id = :organization_id" : "") . "
+        " . (!$isGlobalAdmin && $organization ? "AND c.organization_id = :organization_id" : "") . "
 
         ORDER BY c.id DESC
     ";
 
     $stmt = $conn->prepare($sql);
-    if ($organization) {
+    if (!$isGlobalAdmin && $organization) {
         $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
     }
     $stmt->execute();

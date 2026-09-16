@@ -33,6 +33,7 @@ try {
     $organization = $requestUserId
         ? findOrganizationForUser($conn, $requestUserId, $requestedOrganizationId)
         : null;
+    $isGlobalAdmin = $requestUserId > 0 && is_array($organization) && ($organization["global_access"] ?? false) === true;
 
     if ($requestUserId && !$organization && $userRole !== "Caregiver" && $userRole !== "Patient") {
         jsonError("You do not have access to this organization.", 403);
@@ -63,6 +64,7 @@ try {
                 WHEN p.medical_notes_public = 1 OR :canViewPrivateNotes = 1 THEN p.medical_notes
                 ELSE NULL
             END AS medical_notes,
+            p.care_needs,
             p.medical_notes_public,
 
             p.created_at,
@@ -80,7 +82,7 @@ try {
         WHERE 1 = 1
         " . ($requestUserId && $userRole === "Caregiver" ? "AND a.caregiver_id IN (SELECT id FROM caregivers WHERE user_id = :request_user_id)" : "") . "
         " . ($requestUserId && $userRole === "Patient" ? "AND p.user_id = :request_user_id" : "") . "
-        " . ($requestUserId && $organization && $userRole !== "Caregiver" && $userRole !== "Patient" ? "AND p.organization_id = :organization_id" : "") . "
+        " . ($requestUserId && !$isGlobalAdmin && $organization && $userRole !== "Caregiver" && $userRole !== "Patient" ? "AND p.organization_id = :organization_id" : "") . "
         " . (!$requestUserId ? "" : "") . "
 
         GROUP BY p.id
@@ -95,7 +97,7 @@ try {
     if ($requestUserId && $userRole === "Patient") {
         $stmt->bindValue(":request_user_id", $requestUserId, PDO::PARAM_INT);
     }
-    if ($requestUserId && $organization && $userRole !== "Caregiver" && $userRole !== "Patient") {
+    if ($requestUserId && !$isGlobalAdmin && $organization && $userRole !== "Caregiver" && $userRole !== "Patient") {
         $stmt->bindValue(":organization_id", $organization["id"], PDO::PARAM_INT);
     }
     $stmt->execute();

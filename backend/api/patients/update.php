@@ -136,6 +136,7 @@ try {
             emergency_contact_name = ?,
             emergency_contact_phone = ?,
             medical_notes = ?,
+            care_needs = ?,
             medical_notes_public = ?
         WHERE id = ?
     ");
@@ -148,6 +149,10 @@ try {
         $data["emergency_contact_name"],
         $data["emergency_contact_phone"],
         $data["medical_notes"],
+        implode(", ", array_values(array_unique(array_filter(array_map(
+            static fn($need) => trim((string) $need),
+            is_array($data["care_needs"] ?? null) ? $data["care_needs"] : []
+        ))))),
         !empty($data["medical_notes_public"]) ? 1 : 0,
         $data["id"]
     ]);

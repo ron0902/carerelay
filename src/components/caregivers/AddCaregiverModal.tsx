@@ -6,6 +6,7 @@ import {
   updateCaregiver,
 } from "../../services/caregiverService";
 import { useAuth } from "../../context/AuthContext";
+import { CAREGIVER_SKILLS } from "../../constants/caregiverSkills";
 
 interface AddCaregiverModalProps {
   open: boolean;
@@ -318,11 +319,47 @@ export default function AddCaregiverModal({
           />
 
           <Input
-            label="Basic Skill Set"
-            placeholder="First aid, dementia care, mobility assistance"
+            label="Other Skills"
+            placeholder="Add another skill, separated by commas"
             value={form.skills}
             onChange={(e) => setForm({ ...form, skills: e.target.value })}
           />
+
+          <div>
+            <p className="mb-2 font-medium">Caregiving Skills</p>
+            <p className="mb-3 text-sm text-gray-500">
+              Select the duties this caregiver can confidently provide.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CAREGIVER_SKILLS.map((skill) => {
+                const selectedSkills = form.skills
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean);
+                const checked = selectedSkills.includes(skill);
+
+                return (
+                  <label
+                    key={skill}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-blue-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const nextSkills = e.target.checked
+                          ? [...selectedSkills, skill]
+                          : selectedSkills.filter((item) => item !== skill);
+                        setForm({ ...form, skills: nextSkills.join(", ") });
+                      }}
+                      className="mt-1 h-4 w-4 accent-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">{skill}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
 
           <div>
             <label className="mb-2 block font-medium">Certifications</label>

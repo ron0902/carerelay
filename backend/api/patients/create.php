@@ -21,9 +21,14 @@ $data = json_decode(file_get_contents("php://input"), true);
 $organizationId = isset($data["organization_id"])
     ? (int) $data["organization_id"]
     : null;
-if (!$organizationId && !empty($data["created_by"])) {
+if ($organizationId !== null && $organizationId <= 0) {
+    $organizationId = null;
+}
+if ($organizationId === null && !empty($data["created_by"])) {
     $organization = findOrganizationForUser($conn, (int) $data["created_by"]);
-    $organizationId = $organization ? (int) $organization["id"] : null;
+    if ($organization && $organization["id"] !== null) {
+        $organizationId = (int) $organization["id"];
+    }
 }
 if ($organizationId) {
     $organization = findOrganizationForUser(
@@ -33,6 +38,16 @@ if ($organizationId) {
     );
     if (!$organization) {
         jsonError("You do not have access to this organization.", 403);
+    }
+}
+
+if (!empty($data["created_by"])) {
+    $creatorStmt = $conn->prepare("SELECT role FROM users WHERE id = ? AND status = 'Active' LIMIT 1");
+    $creatorStmt->execute([(int) $data["created_by"]]);
+    $creatorRole = $creatorStmt->fetchColumn();
+
+    if ($creatorRole === "Admin" && $organizationId === null) {
+        jsonError("Select an organization before creating a patient.", 400);
     }
 }
 
@@ -103,11 +118,12 @@ try {
             emergency_contact_name,
             emergency_contact_phone,
             medical_notes,
+            care_needs,
             medical_notes_public
         )
         VALUES
         (
-            ?,?,?,?,?,?,?,?,?,?
+            ?,?,?,?,?,?,?,?,?,?,?
         )
     ");
 
@@ -121,6 +137,10 @@ try {
         $data["emergency_contact_name"],
         $data["emergency_contact_phone"],
         $data["medical_notes"],
+        implode(", ", array_values(array_unique(array_filter(array_map(
+            static fn($need) => trim((string) $need),
+            is_array($data["care_needs"] ?? null) ? $data["care_needs"] : []
+        ))))),
         !empty($data["medical_notes_public"]) ? 1 : 0
     ]);
 

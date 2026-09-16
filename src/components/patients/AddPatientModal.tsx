@@ -6,6 +6,8 @@ import {
   updatePatient,
 } from "../../services/patientService";
 import { useAuth } from "../../context/AuthContext";
+import { CAREGIVER_SKILLS } from "../../constants/caregiverSkills";
+import { getOrganizations } from "../../services/organizationService";
 
 interface AddPatientModalProps {
   open: boolean;
@@ -27,8 +29,15 @@ interface PatientForm {
   emergencyContactName: string;
   emergencyContactPhone: string;
   medicalNotes: string;
+  careNeeds: string[];
   medicalNotesPublic: boolean;
   password: string;
+  organizationId: string;
+}
+
+interface OrganizationOption {
+  id: number;
+  name: string;
 }
 
 export default function AddPatientModal({
@@ -51,9 +60,12 @@ export default function AddPatientModal({
     emergencyContactName: "",
     emergencyContactPhone: "",
     medicalNotes: "",
+    careNeeds: [],
     medicalNotesPublic: false,
     password: "Patient@123",
+    organizationId: "",
   });
+  const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
 
   const [errors, setErrors] = useState({
     firstName: "",
@@ -88,14 +100,29 @@ export default function AddPatientModal({
 
         medicalNotes:
           patient.medicalCondition ?? "",
+        careNeeds: patient.careNeeds ?? [],
         medicalNotesPublic:
           Boolean(patient.medicalNotesPublic),
 
         // Don't replace the patient's password when editing
         password: "Patient@123",
+        organizationId: "",
       });
     } else {
       resetForm();
+    }
+
+    if (open && !patient && user?.role === "Admin") {
+      getOrganizations()
+        .then((response) => {
+          if (response.success) {
+            setOrganizations((response.organizations || []).map((organization: any) => ({
+              id: Number(organization.id),
+              name: organization.organization_name ?? "",
+            })));
+          }
+        })
+        .catch((error) => console.error("Failed to load organizations:", error));
     }
 
     setErrors({
@@ -120,6 +147,7 @@ export default function AddPatientModal({
       emergencyContactName: "",
       emergencyContactPhone: "",
       medicalNotes: "",
+      careNeeds: [],
       medicalNotesPublic: false,
       password: "Patient@123",
     });
@@ -181,7 +209,9 @@ export default function AddPatientModal({
         form.emergencyContactPhone,
 
       medical_notes: form.medicalNotes,
+      care_needs: form.careNeeds,
       medical_notes_public: form.medicalNotesPublic ? 1 : 0,
+      ...(form.organizationId ? { organization_id: Number(form.organizationId) } : {}),
 
       // Only needed when creating
       password: form.password,
@@ -215,6 +245,8 @@ export default function AddPatientModal({
       const savedPatient: Patient = {
         id: patient?.id ?? Number(response.patient?.id ?? 0),
 
+        userId: patient?.userId ?? 0,
+
         name: `${form.firstName.trim()} ${form.lastName.trim()}`,
 
         dateOfBirth: form.dateOfBirth,
@@ -234,6 +266,7 @@ export default function AddPatientModal({
         bloodType: form.bloodType,
 
         medicalCondition: form.medicalNotes,
+        careNeeds: form.careNeeds,
         medicalNotesPublic: form.medicalNotesPublic,
 
         emergencyContactName:
@@ -241,6 +274,9 @@ export default function AddPatientModal({
 
         emergencyContactPhone:
           form.emergencyContactPhone,
+
+        createdAt: patient?.createdAt ?? "",
+        updatedAt: patient?.updatedAt ?? "",
       };
 
       if (!savedPatient.id) {
@@ -436,6 +472,24 @@ export default function AddPatientModal({
           </div>
         </div>
 
+        {user?.role === "Admin" && !patient && (
+          <div>
+            <label className="mb-2 block font-medium">Organization</label>
+            <select
+              className="w-full rounded-lg border p-3"
+              value={form.organizationId}
+              onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
+            >
+              <option value="">Select Organization</option>
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Contact Information */}
         <div>
           <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Contact Information</h3>
@@ -500,6 +554,31 @@ export default function AddPatientModal({
             value={form.medicalNotes}
             onChange={(e) => setForm({ ...form, medicalNotes: e.target.value })}
           />
+
+          <div className="mt-5">
+            <label className="mb-2 block font-medium">Care Needs</label>
+            <p className="mb-3 text-sm text-gray-500">
+              Select the support this patient needs so matching caregivers can be found.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CAREGIVER_SKILLS.map((skill) => (
+                <label key={skill} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-blue-50">
+                  <input
+                    type="checkbox"
+                    checked={form.careNeeds.includes(skill)}
+                    onChange={(e) => setForm({
+                      ...form,
+                      careNeeds: e.target.checked
+                        ? [...form.careNeeds, skill]
+                        : form.careNeeds.filter((item) => item !== skill),
+                    })}
+                    className="mt-1 h-4 w-4 accent-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">{skill}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Password */}

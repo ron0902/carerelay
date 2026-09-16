@@ -35,3 +35,12 @@ export const deleteAssignment = async (id: number) => {
 
   return response.data;
 };
+
+export const matchCaregivers = async (payload: {
+  assigned_by: number;
+  patient_id: number;
+  organization_id: number;
+}) => {
+  const response = await api.post("/assignments/match.php", payload);
+  return response.data;
+};

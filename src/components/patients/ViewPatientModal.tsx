@@ -53,6 +53,7 @@ export default function ViewPatientModal({
         emergency_contact_name: patient.emergencyContactName,
         emergency_contact_phone: patient.emergencyContactPhone,
         medical_notes: patient.medicalCondition,
+        care_needs: patient.careNeeds,
         medical_notes_public: nextValue ? 1 : 0,
       });
 

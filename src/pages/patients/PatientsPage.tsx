@@ -124,6 +124,9 @@ export default function PatientsPage() {
 
             medicalCondition:
               patient.medical_notes ?? "",
+            careNeeds: patient.care_needs
+              ? patient.care_needs.split(", ")
+              : [],
             medicalNotesPublic:
               Boolean(patient.medical_notes_public),
 
